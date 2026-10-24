@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 外付けLEDを点滅させよう | Pico 2 W 課題</title>
+<meta name="description" content="組み込みの「Hello, world!」。GPIO 出力と、LED を安全に光らせるための抵抗計算を学びます。">
+<style>
+:root{
+  --bg:#f6f5f1; --surface:#ffffff; --surface2:#f0eee8; --text:#1d1f23; --muted:#5d636d; --line:#dedad0;
+  --accent:#2e9d5b; --accent-soft:#e3f4ea; --code-bg:#f3f1ec;
+  --sig:#2c6fd6; --pwr:#d23c3c; --gnd:#3b3f46; --idle:#b9b5aa;
+  --pcb:#1f7a4a; --pcb-ink:#e9f7ef;
+  --hint:#b07a00; --hint-soft:#fff6dd; --ans:#c0392b; --ans-soft:#fdecea;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#7fd6a0; --accent-soft:#183526; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#7fd6a0; --accent-soft:#183526; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  line-height:1.75;font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 64px}
+a{color:var(--accent)}
+code{font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:.9em;background:var(--code-bg);
+  padding:.1em .35em;border-radius:4px}
+header.hero{background:var(--surface);border-bottom:1px solid var(--line);margin-bottom:28px}
+header.hero .wrap{padding-top:22px;padding-bottom:22px}
+.crumbs{font-size:.85rem;color:var(--muted);display:flex;gap:.6em;flex-wrap:wrap;align-items:center}
+.crumbs a{color:var(--muted)}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;
+  padding:.15em .7em;border-radius:99px;letter-spacing:.03em}
+h1{font-size:1.75rem;line-height:1.35;margin:.4em 0 .3em}
+h1 .no{color:var(--accent);margin-right:.35em;font-variant-numeric:tabular-nums}
+.lead{color:var(--muted);margin:0 0 .8em}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.meta li{background:var(--surface2);border-radius:6px;padding:.2em .7em;font-size:.85rem}
+section{margin:0 0 34px}
+h2{font-size:1.3rem;margin:0 0 .6em;display:flex;align-items:center;gap:.5em}
+h2 .step{background:var(--accent);color:#fff;font-size:.75rem;padding:.2em .6em;border-radius:5px;font-weight:700}
+h3{font-size:1.05rem;margin:1.4em 0 .4em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.goal{border-left:5px solid var(--accent)}
+.parts{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0}
+.parts li{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:.25em .75em;font-size:.92rem}
+.parts li b{color:var(--accent);margin-left:.3em}
+.points{background:var(--accent-soft);border-radius:12px;padding:16px 20px}
+.points h2{margin-bottom:.3em}
+.points ul{margin:0;padding-left:1.2em}
+.points li{margin:.35em 0}
+ol.q{padding-left:1.4em;margin:.4em 0 1em}
+ol.q li{margin:.5em 0}
+ul.req{padding-left:1.2em}
+ul.req li{margin:.3em 0}
+.reveal{margin:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.rbtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:.6em;width:100%;
+  padding:12px 16px;font-weight:700;min-height:44px}
+.rbtn:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.rbtn .chev{margin-left:auto;transition:transform .2s;color:var(--muted)}
+.rbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.hint .rbtn{color:var(--hint)}
+.hint .rbtn:hover{background:var(--hint-soft)}
+.answer{border:2px dashed var(--ans)}
+.answer .rbtn{color:var(--ans)}
+.answer .rbtn:hover{background:var(--ans-soft)}
+.answer.open{border-style:solid}
+.rbody{padding:4px 18px 18px;border-top:1px solid var(--line)}
+.rbody > :first-child{margin-top:12px}
+.note{background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.93rem;margin:12px 0}
+.warn{background:var(--ans-soft);border-left:4px solid var(--ans);border-radius:6px;padding:10px 14px;margin:12px 0;font-size:.95rem}
+.pitfall{border-left:4px solid var(--hint);background:var(--hint-soft);border-radius:6px;padding:10px 14px;margin:12px 0}
+.pitfall h4{margin:0 0 .3em;font-size:.95rem;color:var(--hint)}
+.pitfall ul{margin:0;padding-left:1.2em}
+figure{margin:14px 0}
+figure.schem pre, figure.code pre{margin:0;overflow-x:auto;background:var(--code-bg);padding:14px 16px;
+  font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:13.5px;line-height:1.5;border-radius:0 0 8px 8px}
+figure.schem figcaption, figure.code figcaption{display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface2);padding:6px 12px;border-radius:8px 8px 0 0;font-size:.82rem;color:var(--muted)}
+figure.code pre code{background:none;padding:0;font-size:inherit}
+.fname{font-family:Consolas,Menlo,monospace;font-weight:700;color:var(--text)}
+.copy{font:inherit;font-size:.78rem;border:1px solid var(--line);background:var(--surface);color:var(--text);
+  border-radius:6px;padding:2px 10px;cursor:pointer;min-height:28px}
+.copy.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tablewrap{overflow-x:auto}
+table.wiring{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}
+table.wiring th, table.wiring td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.wiring th{white-space:nowrap;font-size:.8rem;color:var(--muted);font-weight:600}
+table.wiring td.num{font-variant-numeric:tabular-nums;font-weight:700;width:4.5em}
+.tag{font-size:.75rem;padding:.1em .5em;border-radius:4px;color:#fff;white-space:nowrap}
+.t-sig{background:var(--sig)} .t-pwr{background:var(--pwr)} .t-gnd{background:var(--gnd);color:var(--bg)}
+svg.pinout{width:100%;height:auto;display:block;margin:6px 0;font-family:Consolas,Menlo,monospace}
+svg.pinout .pcb{fill:var(--pcb)}
+svg.pinout .usb{fill:#9aa0a8}
+svg.pinout .usbtxt{font-size:10px;fill:#222;text-anchor:middle;dominant-baseline:middle}
+svg.pinout .boardtxt{fill:var(--pcb-ink);font-size:14px;dominant-baseline:middle;font-weight:700;text-anchor:middle;font-family:system-ui,sans-serif}
+svg.pinout .boardsub{fill:var(--pcb-ink);font-size:10px;text-anchor:middle;opacity:.8;font-family:system-ui,sans-serif}
+svg.pinout .hole{fill:#d8c27a;stroke:#8b7a3e;stroke-width:1}
+svg.pinout .pnum{font-size:9px;fill:var(--pcb-ink);opacity:.85}
+svg.pinout .pname{font-size:11.5px;fill:var(--idle)}
+svg.pinout .plab{font-size:12.5px;font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-weight:600}
+svg.pinout .lead{stroke-width:1.5;stroke-dasharray:3 2}
+svg.pinout .p-sig .pname, svg.pinout .p-sig .plab{fill:var(--sig);font-weight:700}
+svg.pinout .p-pwr .pname, svg.pinout .p-pwr .plab{fill:var(--pwr);font-weight:700}
+svg.pinout .p-gnd .pname, svg.pinout .p-gnd .plab{fill:var(--gnd);font-weight:700}
+svg.pinout .p-sig .lead{stroke:var(--sig)} svg.pinout .p-pwr .lead{stroke:var(--pwr)} svg.pinout .p-gnd .lead{stroke:var(--gnd)}
+svg.pinout .p-sig .hole{fill:var(--sig);stroke:#fff;stroke-width:2}
+svg.pinout .p-pwr .hole{fill:var(--pwr);stroke:#fff;stroke-width:2}
+svg.pinout .p-gnd .hole{fill:var(--gnd);stroke:#fff;stroke-width:2}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend .l-sig::before{background:var(--sig)} .legend .l-pwr::before{background:var(--pwr)} .legend .l-gnd::before{background:var(--gnd)}
+.checks{list-style:none;padding:0;margin:0}
+.checks li{display:flex;gap:.6em;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line)}
+.checks input{width:20px;height:20px;margin-top:4px;accent-color:var(--accent);flex:none}
+.challenge li{margin:.45em 0}
+.done-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.donebtn{font:inherit;font-weight:700;border:2px solid var(--accent);color:var(--accent);background:var(--surface);
+  padding:8px 18px;border-radius:99px;cursor:pointer;min-height:44px}
+.donebtn[aria-pressed="true"]{background:var(--accent);color:#fff}
+nav.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;flex-wrap:wrap}
+nav.pager a{flex:1 1 200px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;
+  text-decoration:none;color:var(--text)}
+nav.pager a small{display:block;color:var(--muted)}
+nav.pager a.next{text-align:right}
+.themebtn{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--surface2);color:var(--text);
+  border-radius:99px;padding:2px 10px;cursor:pointer;margin-left:auto}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 0}
+.tools button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  border-radius:6px;padding:4px 10px;cursor:pointer}
+/* highlight.js 用の控えめな配色 */
+.hljs-comment{color:#7c8a7a;font-style:italic}
+.hljs-keyword,.hljs-type,.hljs-built_in{color:#8a3fc0}
+.hljs-string{color:#1f8a55}
+.hljs-number,.hljs-literal{color:#c2541d}
+.hljs-meta{color:#2c6fd6}
+.hljs-title.function_{color:#1d5fb8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hljs-keyword,:root:not([data-theme="light"]) .hljs-type{color:#c99cf0}
+ :root:not([data-theme="light"]) .hljs-string{color:#7fd6a0} :root:not([data-theme="light"]) .hljs-number{color:#f2b27a}
+ :root:not([data-theme="light"]) .hljs-meta{color:#8db6f2} :root:not([data-theme="light"]) .hljs-title.function_{color:#9cc3ff}}
+:root[data-theme="dark"] .hljs-keyword,:root[data-theme="dark"] .hljs-type{color:#c99cf0}
+:root[data-theme="dark"] .hljs-string{color:#7fd6a0} :root[data-theme="dark"] .hljs-number{color:#f2b27a}
+:root[data-theme="dark"] .hljs-meta{color:#8db6f2} :root[data-theme="dark"] .hljs-title.function_{color:#9cc3ff}
+@media (max-width:560px){h1{font-size:1.4rem}.card{padding:14px}.rbody{padding:4px 12px 14px}}
+@media print{.rbody[hidden]{display:block!important}.rbtn .chev,.copy,.tools,.themebtn{display:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js" defer></script>
+</head>
+<body data-key="pico2w-ex01">
+<header class="hero"><div class="wrap">
+<div class="crumbs"><a href="index.html">課題一覧</a><span>›</span><span class="badge">Lv.1 入門</span>
+<button class="themebtn" type="button">ライト/ダーク</button></div>
+<h1><span class="no">01</span>外付けLEDを点滅させよう</h1>
+<p class="lead">組み込みの「Hello, world!」。GPIO 出力と、LED を安全に光らせるための抵抗計算を学びます。</p>
+<ul class="meta"><li>⏱ 目安 30分</li><li>🔧 回路 + 💻 コード</li><li>📚 GPIO出力・電流制限抵抗</li></ul>
+</div></header>
+<main class="wrap">
+<section><h2>🎯 つくるもの</h2><div class="card goal"><p>GP15 につないだ赤色LEDと、Pico 2 W の<strong>基板上のLED</strong>を 0.5 秒ごとに<strong>交互に</strong>点滅させます。</p></div></section>
+<section><h2>🧰 使う部品</h2><ul class="parts"><li>赤色LED<b>×1</b></li><li>抵抗 220Ω<b>×1</b></li></ul>
+<p class="note">共通で使うもの: Pico 2 W、ブレッドボード、ジャンパワイヤ、USB ケーブル。</p></section>
+<section class="points"><h2>📌 この課題のポイント</h2><ul><li>LED には向き（極性）がある。<strong>長い脚 = アノード(+)</strong>、短い脚 = カソード(−)。</li><li>LED は抵抗なしでつなぐと電流が流れすぎて壊れる。<strong>オームの法則で抵抗値を決める</strong>のが組み込みの第一歩。</li><li>Pico 2 W の基板上LEDは GPIO25 ではなく <strong>Wi-Fi チップ(CYW43439)の端子</strong>につながっている。初代 Pico とはコードが違う。</li><li>物理ピン番号（1〜40）と GPIO 番号（GP0〜）は別物。配線ミスの一番の原因なので、常に両方を確認する。</li></ul></section>
+
+<section id="circuit"><h2><span class="step">STEP 1</span>回路課題</h2>
+<div class="card"><p>GP15 から抵抗と LED を通って GND に戻る回路を作ります。次の問いに答えながら配線を考えましょう。</p><ol class="q"><li>LED の 2 本の脚のうち、長いほうは何極？ GPIO 側（電圧をかける側）につなぐのはどちら？</li><li>赤色LEDの順方向電圧 V<sub>F</sub> ≒ 2.0V、GPIO の High ≒ 3.3V とします。キットの抵抗（220Ω / 1kΩ / 10kΩ）でそれぞれ何 mA 流れる？ どれを使う？（目安は 5〜10mA）</li><li>抵抗は LED のアノード側とカソード側、どちらに入れるべき？</li><li>GP15 は物理ピンの何番？ 近くの GND は何番？</li></ol></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden>抵抗にかかる電圧は「電源電圧 − LED の V<sub>F</sub>」。電流は <code>I = (3.3 − 2.0) / R</code> で求まります。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>1 本道（直列）の回路では、どこを測っても電流は同じです。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden>Pico 2 W は USB を上にして左上が物理ピン1（GP0）。左列は上から 1→20、右列は上から 40→21 です。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">回路の解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><h3>配線（ピン配置図）</h3><div class="legend"><span class="l-sig">信号</span><span class="l-pwr">電源</span><span class="l-gnd">GND</span></div><svg class="pinout" viewBox="0 0 800 540" role="img" aria-label="Pico 2 W ピン配置と今回の接続">
+<rect x="340" y="30" width="120" height="490" rx="8" class="pcb"/>
+<rect x="380.0" y="18" width="40" height="22" rx="3" class="usb"/>
+<text x="400.0" y="26" class="usbtxt">USB</text>
+<text x="400.0" y="278.5" class="boardtxt" transform="rotate(-90 400.0 278.5)">Pico 2 W（上から見た図）</text>
+<g class="p-idle">
+<circle cx="350" cy="60" r="6" class="hole"/>
+<text x="362" y="64" text-anchor="start" class="pnum">1</text>
+<text x="328" y="64" text-anchor="end" class="pname">GP0</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="60" r="6" class="hole"/>
+<text x="438" y="64" text-anchor="end" class="pnum">40</text>
+<text x="472" y="64" text-anchor="start" class="pname">VBUS</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="83" r="6" class="hole"/>
+<text x="362" y="87" text-anchor="start" class="pnum">2</text>
+<text x="328" y="87" text-anchor="end" class="pname">GP1</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="83" r="6" class="hole"/>
+<text x="438" y="87" text-anchor="end" class="pnum">39</text>
+<text x="472" y="87" text-anchor="start" class="pname">VSYS</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="106" r="6" class="hole"/>
+<text x="362" y="110" text-anchor="start" class="pnum">3</text>
+<text x="328" y="110" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="106" r="6" class="hole"/>
+<text x="438" y="110" text-anchor="end" class="pnum">38</text>
+<text x="472" y="110" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="129" r="6" class="hole"/>
+<text x="362" y="133" text-anchor="start" class="pnum">4</text>
+<text x="328" y="133" text-anchor="end" class="pname">GP2</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="129" r="6" class="hole"/>
+<text x="438" y="133" text-anchor="end" class="pnum">37</text>
+<text x="472" y="133" text-anchor="start" class="pname">3V3_EN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="152" r="6" class="hole"/>
+<text x="362" y="156" text-anchor="start" class="pnum">5</text>
+<text x="328" y="156" text-anchor="end" class="pname">GP3</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="152" r="6" class="hole"/>
+<text x="438" y="156" text-anchor="end" class="pnum">36</text>
+<text x="472" y="156" text-anchor="start" class="pname">3V3(OUT)</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="175" r="6" class="hole"/>
+<text x="362" y="179" text-anchor="start" class="pnum">6</text>
+<text x="328" y="179" text-anchor="end" class="pname">GP4</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="175" r="6" class="hole"/>
+<text x="438" y="179" text-anchor="end" class="pnum">35</text>
+<text x="472" y="179" text-anchor="start" class="pname">ADC_VREF</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="198" r="6" class="hole"/>
+<text x="362" y="202" text-anchor="start" class="pnum">7</text>
+<text x="328" y="202" text-anchor="end" class="pname">GP5</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="198" r="6" class="hole"/>
+<text x="438" y="202" text-anchor="end" class="pnum">34</text>
+<text x="472" y="202" text-anchor="start" class="pname">GP28</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="221" r="6" class="hole"/>
+<text x="362" y="225" text-anchor="start" class="pnum">8</text>
+<text x="328" y="225" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="221" r="6" class="hole"/>
+<text x="438" y="225" text-anchor="end" class="pnum">33</text>
+<text x="472" y="225" text-anchor="start" class="pname">AGND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="244" r="6" class="hole"/>
+<text x="362" y="248" text-anchor="start" class="pnum">9</text>
+<text x="328" y="248" text-anchor="end" class="pname">GP6</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="244" r="6" class="hole"/>
+<text x="438" y="248" text-anchor="end" class="pnum">32</text>
+<text x="472" y="248" text-anchor="start" class="pname">GP27</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="267" r="6" class="hole"/>
+<text x="362" y="271" text-anchor="start" class="pnum">10</text>
+<text x="328" y="271" text-anchor="end" class="pname">GP7</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="267" r="6" class="hole"/>
+<text x="438" y="271" text-anchor="end" class="pnum">31</text>
+<text x="472" y="271" text-anchor="start" class="pname">GP26</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="290" r="6" class="hole"/>
+<text x="362" y="294" text-anchor="start" class="pnum">11</text>
+<text x="328" y="294" text-anchor="end" class="pname">GP8</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="290" r="6" class="hole"/>
+<text x="438" y="294" text-anchor="end" class="pnum">30</text>
+<text x="472" y="294" text-anchor="start" class="pname">RUN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="313" r="6" class="hole"/>
+<text x="362" y="317" text-anchor="start" class="pnum">12</text>
+<text x="328" y="317" text-anchor="end" class="pname">GP9</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="313" r="6" class="hole"/>
+<text x="438" y="317" text-anchor="end" class="pnum">29</text>
+<text x="472" y="317" text-anchor="start" class="pname">GP22</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="336" r="6" class="hole"/>
+<text x="362" y="340" text-anchor="start" class="pnum">13</text>
+<text x="328" y="340" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="336" r="6" class="hole"/>
+<text x="438" y="340" text-anchor="end" class="pnum">28</text>
+<text x="472" y="340" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="359" r="6" class="hole"/>
+<text x="362" y="363" text-anchor="start" class="pnum">14</text>
+<text x="328" y="363" text-anchor="end" class="pname">GP10</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="359" r="6" class="hole"/>
+<text x="438" y="363" text-anchor="end" class="pnum">27</text>
+<text x="472" y="363" text-anchor="start" class="pname">GP21</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="382" r="6" class="hole"/>
+<text x="362" y="386" text-anchor="start" class="pnum">15</text>
+<text x="328" y="386" text-anchor="end" class="pname">GP11</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="382" r="6" class="hole"/>
+<text x="438" y="386" text-anchor="end" class="pnum">26</text>
+<text x="472" y="386" text-anchor="start" class="pname">GP20</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="405" r="6" class="hole"/>
+<text x="362" y="409" text-anchor="start" class="pnum">16</text>
+<text x="328" y="409" text-anchor="end" class="pname">GP12</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="405" r="6" class="hole"/>
+<text x="438" y="409" text-anchor="end" class="pnum">25</text>
+<text x="472" y="409" text-anchor="start" class="pname">GP19</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="428" r="6" class="hole"/>
+<text x="362" y="432" text-anchor="start" class="pnum">17</text>
+<text x="328" y="432" text-anchor="end" class="pname">GP13</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="428" r="6" class="hole"/>
+<text x="438" y="432" text-anchor="end" class="pnum">24</text>
+<text x="472" y="432" text-anchor="start" class="pname">GP18</text>
+</g>
+<g class="p-gnd">
+<circle cx="350" cy="451" r="6" class="hole"/>
+<text x="362" y="455" text-anchor="start" class="pnum">18</text>
+<text x="328" y="455" text-anchor="end" class="pname">GND</text>
+<line x1="260" y1="451" x2="254" y2="451" class="lead"/>
+<text x="248" y="455" text-anchor="end" class="plab">LED カソード(短い脚)</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="451" r="6" class="hole"/>
+<text x="438" y="455" text-anchor="end" class="pnum">23</text>
+<text x="472" y="455" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="474" r="6" class="hole"/>
+<text x="362" y="478" text-anchor="start" class="pnum">19</text>
+<text x="328" y="478" text-anchor="end" class="pname">GP14</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="474" r="6" class="hole"/>
+<text x="438" y="478" text-anchor="end" class="pnum">22</text>
+<text x="472" y="478" text-anchor="start" class="pname">GP17</text>
+</g>
+<g class="p-sig">
+<circle cx="350" cy="497" r="6" class="hole"/>
+<text x="362" y="501" text-anchor="start" class="pnum">20</text>
+<text x="328" y="501" text-anchor="end" class="pname">GP15</text>
+<line x1="260" y1="497" x2="254" y2="497" class="lead"/>
+<text x="248" y="501" text-anchor="end" class="plab">220Ω → LED アノード(長い脚)</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="497" r="6" class="hole"/>
+<text x="438" y="501" text-anchor="end" class="pnum">21</text>
+<text x="472" y="501" text-anchor="start" class="pname">GP16</text>
+</g>
+</svg><div class="tablewrap"><table class="wiring"><thead><tr><th>物理ピン</th><th>名前</th><th>種別</th><th>つなぐ先</th></tr></thead><tbody><tr><td class="num">18</td><td><code>GND</code></td><td><span class="tag t-gnd">GND</span></td><td>LED カソード(短い脚)</td></tr><tr><td class="num">20</td><td><code>GP15</code></td><td><span class="tag t-sig">信号</span></td><td>220Ω → LED アノード(長い脚)</td></tr></tbody></table></div><h3>回路図</h3><figure class="schem"><figcaption>回路図（R = Ω、例: 220R = 220Ω）</figcaption><pre>                    LED (赤)
+  GP15 ---[ 220R ]---|&gt;|--- GND
+ (pin20)             A  K   (pin18)
+
+  A = アノード(長い脚)   K = カソード(短い脚)</pre></figure><h3>問いの答えと解説</h3>
+<ol>
+<li><strong>長い脚 = アノード(+)</strong>。電流はアノード → カソードの向きにしか流れないので、アノードを GPIO 側に、カソードを GND 側につなぎます。</li>
+<li>計算すると次のとおり。<strong>220Ω を使います。</strong>
+<div class="tablewrap"><table class="wiring"><thead><tr><th>抵抗</th><th>電流</th><th>見え方</th></tr></thead><tbody>
+<tr><td>220Ω</td><td>(3.3−2.0)/220 ≒ <b>5.9mA</b></td><td>しっかり光る（採用）</td></tr>
+<tr><td>1kΩ</td><td>≒ 1.3mA</td><td>暗いが光る（電池機器ならこれも選択肢）</td></tr>
+<tr><td>10kΩ</td><td>≒ 0.13mA</td><td>ほぼ見えない</td></tr>
+</tbody></table></div></li>
+<li><strong>どちらでもOK。</strong>直列回路では電流がどこでも同じなので、抵抗の位置で電流は変わりません。</li>
+<li>GP15 は<strong>物理ピン20</strong>（左列のいちばん下）。すぐ上の<strong>物理ピン18</strong>が GND です。</li>
+</ol>
+<div class="note">RP2350 の GPIO の駆動能力は既定で 4mA 設定です（<code>gpio_set_drive_strength()</code> で 2/4/8/12mA に変更可）。
+5.9mA 流そうとすると出力電圧がわずかに下がって少し電流が減るだけで、壊れることはありません。</div>
+<div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li>ブレッドボード中央の溝をまたがずに LED を差すと、両脚が同じ列でショートして光りません。</li><li>長いブレッドボードは電源レール（赤青の線）が中央で途切れているものがあります。</li><li>抵抗なしで LED を GPIO に直結しない。LED も GPIO も傷みます。</li></ul></div></div></div>
+</section>
+
+<section id="code"><h2><span class="step">STEP 2</span>コーディング課題</h2>
+<div class="card"><p>外付けLEDと基板上LEDを交互に点滅させるプログラムを書きます。</p><p class="note">CMakeLists.txt はプロジェクト直下の共通設定（<code>set(PICO_BOARD pico2_w)</code> など）が済んでいる前提です。共通部分は <a href="index.html#setup">課題一覧ページ</a> にあります。</p><h3>要件</h3><ul class="req"><li>GP15 を出力に設定する</li><li>500ms ごとに外付けLEDの ON/OFF を切り替える</li><li>基板上LEDは外付けLEDと<strong>逆</strong>の状態にする（交互点滅）</li><li>Wi-Fi チップの初期化に失敗したらメッセージを出して終了する</li></ul></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden>GPIO の基本は <code>gpio_init(pin)</code> → <code>gpio_set_dir(pin, GPIO_OUT)</code> → <code>gpio_put(pin, 1/0)</code>。待ちは <code>sleep_ms()</code>。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>基板上LEDは <code>#include "pico/cyw43_arch.h"</code> して、<code>cyw43_arch_init()</code> の後に <code>cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, 1)</code>。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden>リンクするライブラリは <code>pico_stdlib</code> と <code>pico_cyw43_arch_none</code>（Wi-Fi 通信は使わない版）。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">コードの解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><figure class="code"><figcaption><span class="fname">main.c</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-c">// 課題01: 外付けLEDと基板上LEDを交互に点滅させる
+#include &lt;stdio.h&gt;
+#include "pico/stdlib.h"
+#include "pico/cyw43_arch.h"   // Pico 2 W の基板上LEDは Wi-Fi チップ側につながっている
+
+#define LED_PIN     15         // GP15 (物理ピン20)
+#define INTERVAL_MS 500
+
+int main(void) {
+    stdio_init_all();
+
+    // 基板上LEDを使うには Wi-Fi チップ(CYW43439)の初期化が必要
+    if (cyw43_arch_init() != 0) {
+        printf("cyw43_arch_init failed\n");
+        return 1;
+    }
+
+    gpio_init(LED_PIN);
+    gpio_set_dir(LED_PIN, GPIO_OUT);
+
+    bool on = false;
+    while (true) {
+        on = !on;
+        gpio_put(LED_PIN, on);                                // 外付けLED
+        cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, !on);      // 基板上LEDは逆相
+        sleep_ms(INTERVAL_MS);
+    }
+}</code></pre></figure><figure class="code"><figcaption><span class="fname">CMakeLists.txt</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-cmake">add_executable(ex01 main.c)
+target_link_libraries(ex01 pico_stdlib pico_cyw43_arch_none)
+pico_enable_stdio_usb(ex01 1)     # printf を USB シリアルへ
+pico_enable_stdio_uart(ex01 0)
+pico_add_extra_outputs(ex01)      # .uf2 を生成</code></pre></figure><h3>解説</h3>
+<ul>
+<li><code>bool on</code> を反転させて両方の LED に渡すだけで「交互」が作れます。状態を 1 つの変数に持たせると、2 つの LED がずれることがありません。</li>
+<li><code>cyw43_arch_init()</code> は Wi-Fi チップのファームウェアを読み込むので、起動に少し時間がかかります。LED のためだけでも必要です。</li>
+<li><code>CYW43_WL_GPIO_LED_PIN</code> が未定義エラーになる場合は、CMake で <code>PICO_BOARD</code> が <code>pico2_w</code> になっていません（ビルドフォルダを消して cmake し直す）。</li>
+</ul><div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li>初代 Pico の感覚で <code>gpio_put(25, 1)</code> と書いても Pico 2 W の基板上LEDは光りません。</li><li><code>main()</code> から return するとプログラムはそこで止まります。組み込みでは <code>while (true)</code> で回し続けるのが基本です。</li></ul></div></div></div>
+</section>
+
+<section><h2>✅ 動作確認</h2><div class="card"><ul class="checks"><li><input type="checkbox" id="c0"><label for="c0">外付けLEDと基板上LEDが 0.5 秒ごとに交互に点滅する</label></li><li><input type="checkbox" id="c1"><label for="c1">抵抗を 1kΩ に替えて、明るさの違いを確認した</label></li><li><input type="checkbox" id="c2"><label for="c2">LED を逆向きに差すと光らないことを確認した</label></li></ul>
+<div class="done-box" style="margin-top:14px"><button class="donebtn" type="button" aria-pressed="false">この課題をクリアにする</button></div></div></section>
+
+<section><h2>🚀 発展課題</h2><div class="card challenge"><ul><li>点滅パターンを配列（例: <code>{200, 200, 200, 600, ...}</code>）で持たせ、モールス信号の「SOS」を出す。</li><li><code>gpio_set_drive_strength()</code> を 2mA と 12mA で切り替えて、明るさが変わるか観察する。</li><li>LED を 3 個にして、流れるように点灯させる（次の課題 05 の伏線）。</li></ul></div></section>
+<div class="tools"><button type="button" data-toggle-all=".hint">ヒントをすべて開く</button>
+<button type="button" data-toggle-all=".answer">解答をすべて開く</button></div>
+<nav class="pager"><a href="index.html"><small>←</small>課題一覧</a><a class="next" href="ex02_button_toggle.html"><small>次の課題 →</small>02 ボタンでLEDをON/OFFしよう</a></nav>
+</main>
+<script>
+(function(){
+  function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+  // 表示/非表示ボタン
+  document.querySelectorAll('.rbtn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var body=b.nextElementSibling, open=b.getAttribute('aria-expanded')==='true';
+      b.setAttribute('aria-expanded',String(!open)); body.hidden=open;
+      b.parentElement.classList.toggle('open',!open);
+      var l=b.querySelector('.rlabel');
+      if(b.parentElement.classList.contains('answer')) l.textContent=open?l.dataset.c:l.dataset.o;
+    });
+    var l=b.querySelector('.rlabel');
+    if(b.parentElement.classList.contains('answer')){l.dataset.c=l.textContent;l.dataset.o=l.textContent.replace('を見る','を隠す');}
+  });
+  // まとめて開閉
+  document.querySelectorAll('[data-toggle-all]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var sel=btn.dataset.toggleAll, open=btn.dataset.state!=='open';
+      document.querySelectorAll(sel+' > .rbtn').forEach(function(b){
+        if((b.getAttribute('aria-expanded')==='true')!==open) b.click();
+      });
+      btn.dataset.state=open?'open':'closed';
+      btn.textContent=btn.textContent.replace(open?'開く':'閉じる',open?'閉じる':'開く');
+    });
+  });
+  // コピー
+  document.querySelectorAll('figure.code').forEach(function(f){
+    var btn=f.querySelector('.copy'), code=f.querySelector('code');
+    btn.addEventListener('click',function(){
+      var t=code.innerText;
+      var ok=function(){btn.textContent='コピーしました';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='コピー';btn.classList.remove('done');},1600);};
+      if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,fallback);}else{fallback();}
+      function fallback(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(ta);}
+    });
+  });
+  // チェックリストと完了状態の保存
+  var key=document.body.dataset.key;
+  document.querySelectorAll('.checks input').forEach(function(c,i){
+    var k=key+'-chk-'+i; if(store(k)==='1') c.checked=true;
+    c.addEventListener('change',function(){store(k,c.checked?'1':'0');});
+  });
+  var done=document.querySelector('.donebtn');
+  if(done){
+    var set=function(v){done.setAttribute('aria-pressed',String(v));done.textContent=v?'✓ クリア済み':'この課題をクリアにする';};
+    set(store(key+'-done')==='1');
+    done.addEventListener('click',function(){var v=done.getAttribute('aria-pressed')!=='true';set(v);store(key+'-done',v?'1':'0');});
+  }
+  // テーマ切り替え
+  var tb=document.querySelector('.themebtn'), root=document.documentElement;
+  var saved=store('pico2w-theme'); if(saved) root.dataset.theme=saved;
+  if(tb) tb.addEventListener('click',function(){
+    var dark=root.dataset.theme? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; store('pico2w-theme',root.dataset.theme);
+  });
+  // シンタックスハイライト（オフラインならスキップ）
+  window.addEventListener('load',function(){ if(window.hljs){document.querySelectorAll('pre code').forEach(function(el){hljs.highlightElement(el);});} });
+})();
+</script>
+</body>
+</html>

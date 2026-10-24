@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 ジョイスティックでサーボを動かす | Pico 2 W 課題</title>
+<meta name="description" content="サーボモータの PWM 制御と、5V で動く部品との付き合い方を学びます。">
+<style>
+:root{
+  --bg:#f6f5f1; --surface:#ffffff; --surface2:#f0eee8; --text:#1d1f23; --muted:#5d636d; --line:#dedad0;
+  --accent:#2c6fd6; --accent-soft:#e3edfb; --code-bg:#f3f1ec;
+  --sig:#2c6fd6; --pwr:#d23c3c; --gnd:#3b3f46; --idle:#b9b5aa;
+  --pcb:#1f7a4a; --pcb-ink:#e9f7ef;
+  --hint:#b07a00; --hint-soft:#fff6dd; --ans:#c0392b; --ans-soft:#fdecea;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#8db6f2; --accent-soft:#172b4a; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#8db6f2; --accent-soft:#172b4a; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  line-height:1.75;font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 64px}
+a{color:var(--accent)}
+code{font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:.9em;background:var(--code-bg);
+  padding:.1em .35em;border-radius:4px}
+header.hero{background:var(--surface);border-bottom:1px solid var(--line);margin-bottom:28px}
+header.hero .wrap{padding-top:22px;padding-bottom:22px}
+.crumbs{font-size:.85rem;color:var(--muted);display:flex;gap:.6em;flex-wrap:wrap;align-items:center}
+.crumbs a{color:var(--muted)}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;
+  padding:.15em .7em;border-radius:99px;letter-spacing:.03em}
+h1{font-size:1.75rem;line-height:1.35;margin:.4em 0 .3em}
+h1 .no{color:var(--accent);margin-right:.35em;font-variant-numeric:tabular-nums}
+.lead{color:var(--muted);margin:0 0 .8em}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.meta li{background:var(--surface2);border-radius:6px;padding:.2em .7em;font-size:.85rem}
+section{margin:0 0 34px}
+h2{font-size:1.3rem;margin:0 0 .6em;display:flex;align-items:center;gap:.5em}
+h2 .step{background:var(--accent);color:#fff;font-size:.75rem;padding:.2em .6em;border-radius:5px;font-weight:700}
+h3{font-size:1.05rem;margin:1.4em 0 .4em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.goal{border-left:5px solid var(--accent)}
+.parts{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0}
+.parts li{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:.25em .75em;font-size:.92rem}
+.parts li b{color:var(--accent);margin-left:.3em}
+.points{background:var(--accent-soft);border-radius:12px;padding:16px 20px}
+.points h2{margin-bottom:.3em}
+.points ul{margin:0;padding-left:1.2em}
+.points li{margin:.35em 0}
+ol.q{padding-left:1.4em;margin:.4em 0 1em}
+ol.q li{margin:.5em 0}
+ul.req{padding-left:1.2em}
+ul.req li{margin:.3em 0}
+.reveal{margin:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.rbtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:.6em;width:100%;
+  padding:12px 16px;font-weight:700;min-height:44px}
+.rbtn:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.rbtn .chev{margin-left:auto;transition:transform .2s;color:var(--muted)}
+.rbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.hint .rbtn{color:var(--hint)}
+.hint .rbtn:hover{background:var(--hint-soft)}
+.answer{border:2px dashed var(--ans)}
+.answer .rbtn{color:var(--ans)}
+.answer .rbtn:hover{background:var(--ans-soft)}
+.answer.open{border-style:solid}
+.rbody{padding:4px 18px 18px;border-top:1px solid var(--line)}
+.rbody > :first-child{margin-top:12px}
+.note{background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.93rem;margin:12px 0}
+.warn{background:var(--ans-soft);border-left:4px solid var(--ans);border-radius:6px;padding:10px 14px;margin:12px 0;font-size:.95rem}
+.pitfall{border-left:4px solid var(--hint);background:var(--hint-soft);border-radius:6px;padding:10px 14px;margin:12px 0}
+.pitfall h4{margin:0 0 .3em;font-size:.95rem;color:var(--hint)}
+.pitfall ul{margin:0;padding-left:1.2em}
+figure{margin:14px 0}
+figure.schem pre, figure.code pre{margin:0;overflow-x:auto;background:var(--code-bg);padding:14px 16px;
+  font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:13.5px;line-height:1.5;border-radius:0 0 8px 8px}
+figure.schem figcaption, figure.code figcaption{display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface2);padding:6px 12px;border-radius:8px 8px 0 0;font-size:.82rem;color:var(--muted)}
+figure.code pre code{background:none;padding:0;font-size:inherit}
+.fname{font-family:Consolas,Menlo,monospace;font-weight:700;color:var(--text)}
+.copy{font:inherit;font-size:.78rem;border:1px solid var(--line);background:var(--surface);color:var(--text);
+  border-radius:6px;padding:2px 10px;cursor:pointer;min-height:28px}
+.copy.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tablewrap{overflow-x:auto}
+table.wiring{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}
+table.wiring th, table.wiring td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.wiring th{white-space:nowrap;font-size:.8rem;color:var(--muted);font-weight:600}
+table.wiring td.num{font-variant-numeric:tabular-nums;font-weight:700;width:4.5em}
+.tag{font-size:.75rem;padding:.1em .5em;border-radius:4px;color:#fff;white-space:nowrap}
+.t-sig{background:var(--sig)} .t-pwr{background:var(--pwr)} .t-gnd{background:var(--gnd);color:var(--bg)}
+svg.pinout{width:100%;height:auto;display:block;margin:6px 0;font-family:Consolas,Menlo,monospace}
+svg.pinout .pcb{fill:var(--pcb)}
+svg.pinout .usb{fill:#9aa0a8}
+svg.pinout .usbtxt{font-size:10px;fill:#222;text-anchor:middle;dominant-baseline:middle}
+svg.pinout .boardtxt{fill:var(--pcb-ink);font-size:14px;dominant-baseline:middle;font-weight:700;text-anchor:middle;font-family:system-ui,sans-serif}
+svg.pinout .boardsub{fill:var(--pcb-ink);font-size:10px;text-anchor:middle;opacity:.8;font-family:system-ui,sans-serif}
+svg.pinout .hole{fill:#d8c27a;stroke:#8b7a3e;stroke-width:1}
+svg.pinout .pnum{font-size:9px;fill:var(--pcb-ink);opacity:.85}
+svg.pinout .pname{font-size:11.5px;fill:var(--idle)}
+svg.pinout .plab{font-size:12.5px;font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-weight:600}
+svg.pinout .lead{stroke-width:1.5;stroke-dasharray:3 2}
+svg.pinout .p-sig .pname, svg.pinout .p-sig .plab{fill:var(--sig);font-weight:700}
+svg.pinout .p-pwr .pname, svg.pinout .p-pwr .plab{fill:var(--pwr);font-weight:700}
+svg.pinout .p-gnd .pname, svg.pinout .p-gnd .plab{fill:var(--gnd);font-weight:700}
+svg.pinout .p-sig .lead{stroke:var(--sig)} svg.pinout .p-pwr .lead{stroke:var(--pwr)} svg.pinout .p-gnd .lead{stroke:var(--gnd)}
+svg.pinout .p-sig .hole{fill:var(--sig);stroke:#fff;stroke-width:2}
+svg.pinout .p-pwr .hole{fill:var(--pwr);stroke:#fff;stroke-width:2}
+svg.pinout .p-gnd .hole{fill:var(--gnd);stroke:#fff;stroke-width:2}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend .l-sig::before{background:var(--sig)} .legend .l-pwr::before{background:var(--pwr)} .legend .l-gnd::before{background:var(--gnd)}
+.checks{list-style:none;padding:0;margin:0}
+.checks li{display:flex;gap:.6em;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line)}
+.checks input{width:20px;height:20px;margin-top:4px;accent-color:var(--accent);flex:none}
+.challenge li{margin:.45em 0}
+.done-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.donebtn{font:inherit;font-weight:700;border:2px solid var(--accent);color:var(--accent);background:var(--surface);
+  padding:8px 18px;border-radius:99px;cursor:pointer;min-height:44px}
+.donebtn[aria-pressed="true"]{background:var(--accent);color:#fff}
+nav.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;flex-wrap:wrap}
+nav.pager a{flex:1 1 200px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;
+  text-decoration:none;color:var(--text)}
+nav.pager a small{display:block;color:var(--muted)}
+nav.pager a.next{text-align:right}
+.themebtn{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--surface2);color:var(--text);
+  border-radius:99px;padding:2px 10px;cursor:pointer;margin-left:auto}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 0}
+.tools button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  border-radius:6px;padding:4px 10px;cursor:pointer}
+/* highlight.js 用の控えめな配色 */
+.hljs-comment{color:#7c8a7a;font-style:italic}
+.hljs-keyword,.hljs-type,.hljs-built_in{color:#8a3fc0}
+.hljs-string{color:#1f8a55}
+.hljs-number,.hljs-literal{color:#c2541d}
+.hljs-meta{color:#2c6fd6}
+.hljs-title.function_{color:#1d5fb8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hljs-keyword,:root:not([data-theme="light"]) .hljs-type{color:#c99cf0}
+ :root:not([data-theme="light"]) .hljs-string{color:#7fd6a0} :root:not([data-theme="light"]) .hljs-number{color:#f2b27a}
+ :root:not([data-theme="light"]) .hljs-meta{color:#8db6f2} :root:not([data-theme="light"]) .hljs-title.function_{color:#9cc3ff}}
+:root[data-theme="dark"] .hljs-keyword,:root[data-theme="dark"] .hljs-type{color:#c99cf0}
+:root[data-theme="dark"] .hljs-string{color:#7fd6a0} :root[data-theme="dark"] .hljs-number{color:#f2b27a}
+:root[data-theme="dark"] .hljs-meta{color:#8db6f2} :root[data-theme="dark"] .hljs-title.function_{color:#9cc3ff}
+@media (max-width:560px){h1{font-size:1.4rem}.card{padding:14px}.rbody{padding:4px 12px 14px}}
+@media print{.rbody[hidden]{display:block!important}.rbtn .chev,.copy,.tools,.themebtn{display:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js" defer></script>
+</head>
+<body data-key="pico2w-ex06">
+<header class="hero"><div class="wrap">
+<div class="crumbs"><a href="index.html">課題一覧</a><span>›</span><span class="badge">Lv.2 基礎</span>
+<button class="themebtn" type="button">ライト/ダーク</button></div>
+<h1><span class="no">06</span>ジョイスティックでサーボを動かす</h1>
+<p class="lead">サーボモータの PWM 制御と、5V で動く部品との付き合い方を学びます。</p>
+<ul class="meta"><li>⏱ 目安 90分</li><li>🔧 回路 + 💻 コード</li><li>📚 サーボPWM・電源設計・キャリブレーション</li></ul>
+</div></header>
+<main class="wrap">
+<section><h2>🎯 つくるもの</h2><div class="card goal"><p>ジョイスティックを左右に倒すと、<strong>倒した量に比例した速さでサーボが回る</strong>ようにします。スティックを押し込むと 90° に戻ります。</p></div></section>
+<section><h2>🧰 使う部品</h2><ul class="parts"><li>サーボ（SG90）<b>×1</b></li><li>ジョイスティック<b>×1</b></li><li>電解コンデンサ 10µF<b>×1</b></li></ul>
+<p class="note">共通で使うもの: Pico 2 W、ブレッドボード、ジャンパワイヤ、USB ケーブル。</p></section>
+<section class="points"><h2>📌 この課題のポイント</h2><ul><li>サーボは <strong>50Hz（20ms 周期）のパルスの幅</strong>で角度を決める。0.5ms ≒ 0°、2.4ms ≒ 180°（個体差あり）。</li><li>モータは動き出しに大電流を引く。<strong>電源は 5V（VBUS）から取り、GND は共通</strong>にする。</li><li>ジョイスティックは中身が可変抵抗 2 個 + スイッチ。<strong>3.3V で使う</strong>（ADC は 3.3V まで）。</li><li>アナログスティックの中心値は個体ごとに違う。<strong>起動時のキャリブレーション</strong>と<strong>デッドゾーン</strong>で吸収する。</li></ul></section>
+
+<section id="circuit"><h2><span class="step">STEP 1</span>回路課題</h2>
+<div class="card"><p>サーボは 5V、ジョイスティックは 3.3V と、電源が 2 系統になります。どこから取るかを考えましょう。</p><ol class="q"><li>サーボの 3 本の線（茶・赤・橙）は、それぞれ何の線？</li><li>サーボの電源（赤）は 3V3（pin36）と VBUS（pin40）のどちらにつなぐ？ 理由は？</li><li>ジョイスティック基板には「+5V」と書かれていることがあります。VCC は 3V3 と VBUS のどちらにつなぐべき？ 理由は？</li><li>10µF の電解コンデンサはどこに、どの向きで入れる？ 何のため？</li><li>サーボの信号線を Pico の 3.3V 出力で直接駆動してよい？</li></ol></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden>SG90 の定格は 4.8〜6V。動き出しの瞬間には数百 mA 流れることがあります。3V3 ピンから取れる電流は 300mA 程度が目安です。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>ジョイスティックの出力（VRx/VRy）は、VCC をつないだ電圧の範囲で動きます。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden>電解コンデンサには極性があります。<strong>白い帯・短い脚が −</strong>。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">回路の解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><h3>配線（ピン配置図）</h3><div class="legend"><span class="l-sig">信号</span><span class="l-pwr">電源</span><span class="l-gnd">GND</span></div><svg class="pinout" viewBox="0 0 800 540" role="img" aria-label="Pico 2 W ピン配置と今回の接続">
+<rect x="340" y="30" width="120" height="490" rx="8" class="pcb"/>
+<rect x="380.0" y="18" width="40" height="22" rx="3" class="usb"/>
+<text x="400.0" y="26" class="usbtxt">USB</text>
+<text x="400.0" y="278.5" class="boardtxt" transform="rotate(-90 400.0 278.5)">Pico 2 W（上から見た図）</text>
+<g class="p-idle">
+<circle cx="350" cy="60" r="6" class="hole"/>
+<text x="362" y="64" text-anchor="start" class="pnum">1</text>
+<text x="328" y="64" text-anchor="end" class="pname">GP0</text>
+</g>
+<g class="p-pwr">
+<circle cx="450" cy="60" r="6" class="hole"/>
+<text x="438" y="64" text-anchor="end" class="pnum">40</text>
+<text x="472" y="64" text-anchor="start" class="pname">VBUS</text>
+<line x1="540" y1="60" x2="546" y2="60" class="lead"/>
+<text x="552" y="64" text-anchor="start" class="plab">サーボ 赤(+) / 10µF +</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="83" r="6" class="hole"/>
+<text x="362" y="87" text-anchor="start" class="pnum">2</text>
+<text x="328" y="87" text-anchor="end" class="pname">GP1</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="83" r="6" class="hole"/>
+<text x="438" y="87" text-anchor="end" class="pnum">39</text>
+<text x="472" y="87" text-anchor="start" class="pname">VSYS</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="106" r="6" class="hole"/>
+<text x="362" y="110" text-anchor="start" class="pnum">3</text>
+<text x="328" y="110" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gnd">
+<circle cx="450" cy="106" r="6" class="hole"/>
+<text x="438" y="110" text-anchor="end" class="pnum">38</text>
+<text x="472" y="110" text-anchor="start" class="pname">GND</text>
+<line x1="540" y1="106" x2="546" y2="106" class="lead"/>
+<text x="552" y="110" text-anchor="start" class="plab">サーボ茶 / 10µF − / JOY GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="129" r="6" class="hole"/>
+<text x="362" y="133" text-anchor="start" class="pnum">4</text>
+<text x="328" y="133" text-anchor="end" class="pname">GP2</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="129" r="6" class="hole"/>
+<text x="438" y="133" text-anchor="end" class="pnum">37</text>
+<text x="472" y="133" text-anchor="start" class="pname">3V3_EN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="152" r="6" class="hole"/>
+<text x="362" y="156" text-anchor="start" class="pnum">5</text>
+<text x="328" y="156" text-anchor="end" class="pname">GP3</text>
+</g>
+<g class="p-pwr">
+<circle cx="450" cy="152" r="6" class="hole"/>
+<text x="438" y="156" text-anchor="end" class="pnum">36</text>
+<text x="472" y="156" text-anchor="start" class="pname">3V3(OUT)</text>
+<line x1="540" y1="152" x2="546" y2="152" class="lead"/>
+<text x="552" y="156" text-anchor="start" class="plab">JOY VCC（3.3V で使う）</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="175" r="6" class="hole"/>
+<text x="362" y="179" text-anchor="start" class="pnum">6</text>
+<text x="328" y="179" text-anchor="end" class="pname">GP4</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="175" r="6" class="hole"/>
+<text x="438" y="179" text-anchor="end" class="pnum">35</text>
+<text x="472" y="179" text-anchor="start" class="pname">ADC_VREF</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="198" r="6" class="hole"/>
+<text x="362" y="202" text-anchor="start" class="pnum">7</text>
+<text x="328" y="202" text-anchor="end" class="pname">GP5</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="198" r="6" class="hole"/>
+<text x="438" y="202" text-anchor="end" class="pnum">34</text>
+<text x="472" y="202" text-anchor="start" class="pname">GP28</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="221" r="6" class="hole"/>
+<text x="362" y="225" text-anchor="start" class="pnum">8</text>
+<text x="328" y="225" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="221" r="6" class="hole"/>
+<text x="438" y="225" text-anchor="end" class="pnum">33</text>
+<text x="472" y="225" text-anchor="start" class="pname">AGND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="244" r="6" class="hole"/>
+<text x="362" y="248" text-anchor="start" class="pnum">9</text>
+<text x="328" y="248" text-anchor="end" class="pname">GP6</text>
+</g>
+<g class="p-sig">
+<circle cx="450" cy="244" r="6" class="hole"/>
+<text x="438" y="248" text-anchor="end" class="pnum">32</text>
+<text x="472" y="248" text-anchor="start" class="pname">GP27</text>
+<line x1="540" y1="244" x2="546" y2="244" class="lead"/>
+<text x="552" y="248" text-anchor="start" class="plab">JOY VRy（未使用でも可）</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="267" r="6" class="hole"/>
+<text x="362" y="271" text-anchor="start" class="pnum">10</text>
+<text x="328" y="271" text-anchor="end" class="pname">GP7</text>
+</g>
+<g class="p-sig">
+<circle cx="450" cy="267" r="6" class="hole"/>
+<text x="438" y="271" text-anchor="end" class="pnum">31</text>
+<text x="472" y="271" text-anchor="start" class="pname">GP26</text>
+<line x1="540" y1="267" x2="546" y2="267" class="lead"/>
+<text x="552" y="271" text-anchor="start" class="plab">JOY VRx</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="290" r="6" class="hole"/>
+<text x="362" y="294" text-anchor="start" class="pnum">11</text>
+<text x="328" y="294" text-anchor="end" class="pname">GP8</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="290" r="6" class="hole"/>
+<text x="438" y="294" text-anchor="end" class="pnum">30</text>
+<text x="472" y="294" text-anchor="start" class="pname">RUN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="313" r="6" class="hole"/>
+<text x="362" y="317" text-anchor="start" class="pnum">12</text>
+<text x="328" y="317" text-anchor="end" class="pname">GP9</text>
+</g>
+<g class="p-sig">
+<circle cx="450" cy="313" r="6" class="hole"/>
+<text x="438" y="317" text-anchor="end" class="pnum">29</text>
+<text x="472" y="317" text-anchor="start" class="pname">GP22</text>
+<line x1="540" y1="313" x2="546" y2="313" class="lead"/>
+<text x="552" y="317" text-anchor="start" class="plab">JOY SW</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="336" r="6" class="hole"/>
+<text x="362" y="340" text-anchor="start" class="pnum">13</text>
+<text x="328" y="340" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="336" r="6" class="hole"/>
+<text x="438" y="340" text-anchor="end" class="pnum">28</text>
+<text x="472" y="340" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="359" r="6" class="hole"/>
+<text x="362" y="363" text-anchor="start" class="pnum">14</text>
+<text x="328" y="363" text-anchor="end" class="pname">GP10</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="359" r="6" class="hole"/>
+<text x="438" y="363" text-anchor="end" class="pnum">27</text>
+<text x="472" y="363" text-anchor="start" class="pname">GP21</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="382" r="6" class="hole"/>
+<text x="362" y="386" text-anchor="start" class="pnum">15</text>
+<text x="328" y="386" text-anchor="end" class="pname">GP11</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="382" r="6" class="hole"/>
+<text x="438" y="386" text-anchor="end" class="pnum">26</text>
+<text x="472" y="386" text-anchor="start" class="pname">GP20</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="405" r="6" class="hole"/>
+<text x="362" y="409" text-anchor="start" class="pnum">16</text>
+<text x="328" y="409" text-anchor="end" class="pname">GP12</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="405" r="6" class="hole"/>
+<text x="438" y="409" text-anchor="end" class="pnum">25</text>
+<text x="472" y="409" text-anchor="start" class="pname">GP19</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="428" r="6" class="hole"/>
+<text x="362" y="432" text-anchor="start" class="pnum">17</text>
+<text x="328" y="432" text-anchor="end" class="pname">GP13</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="428" r="6" class="hole"/>
+<text x="438" y="432" text-anchor="end" class="pnum">24</text>
+<text x="472" y="432" text-anchor="start" class="pname">GP18</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="451" r="6" class="hole"/>
+<text x="362" y="455" text-anchor="start" class="pnum">18</text>
+<text x="328" y="455" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="451" r="6" class="hole"/>
+<text x="438" y="455" text-anchor="end" class="pnum">23</text>
+<text x="472" y="455" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="474" r="6" class="hole"/>
+<text x="362" y="478" text-anchor="start" class="pnum">19</text>
+<text x="328" y="478" text-anchor="end" class="pname">GP14</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="474" r="6" class="hole"/>
+<text x="438" y="478" text-anchor="end" class="pnum">22</text>
+<text x="472" y="478" text-anchor="start" class="pname">GP17</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="497" r="6" class="hole"/>
+<text x="362" y="501" text-anchor="start" class="pnum">20</text>
+<text x="328" y="501" text-anchor="end" class="pname">GP15</text>
+</g>
+<g class="p-sig">
+<circle cx="450" cy="497" r="6" class="hole"/>
+<text x="438" y="501" text-anchor="end" class="pnum">21</text>
+<text x="472" y="501" text-anchor="start" class="pname">GP16</text>
+<line x1="540" y1="497" x2="546" y2="497" class="lead"/>
+<text x="552" y="501" text-anchor="start" class="plab">サーボ 橙（信号）</text>
+</g>
+</svg><div class="tablewrap"><table class="wiring"><thead><tr><th>物理ピン</th><th>名前</th><th>種別</th><th>つなぐ先</th></tr></thead><tbody><tr><td class="num">40</td><td><code>VBUS</code></td><td><span class="tag t-pwr">電源</span></td><td>サーボ 赤(+) / 10µF +</td></tr><tr><td class="num">38</td><td><code>GND</code></td><td><span class="tag t-gnd">GND</span></td><td>サーボ茶 / 10µF − / JOY GND</td></tr><tr><td class="num">36</td><td><code>3V3(OUT)</code></td><td><span class="tag t-pwr">電源</span></td><td>JOY VCC（3.3V で使う）</td></tr><tr><td class="num">32</td><td><code>GP27</code></td><td><span class="tag t-sig">信号</span></td><td>JOY VRy（未使用でも可）</td></tr><tr><td class="num">31</td><td><code>GP26</code></td><td><span class="tag t-sig">信号</span></td><td>JOY VRx</td></tr><tr><td class="num">29</td><td><code>GP22</code></td><td><span class="tag t-sig">信号</span></td><td>JOY SW</td></tr><tr><td class="num">21</td><td><code>GP16</code></td><td><span class="tag t-sig">信号</span></td><td>サーボ 橙（信号）</td></tr></tbody></table></div><h3>回路図</h3><figure class="schem"><figcaption>回路図（R = Ω、例: 220R = 220Ω）</figcaption><pre>  VBUS 5V (pin40) ---+------------------- サーボ 赤 (+)
+                     |
+                    (+)
+                    === 10uF 電解コンデンサ (白帯が - 側)
+                    (-)
+                     |
+  GND (pin38) -------+------------------- サーボ 茶 (-)
+
+  GP16 (pin21) -------------------------- サーボ 橙 (信号)
+
+
+  3V3 (pin36) --------- JOY VCC ("+5V" と書かれていても 3.3V に)
+  GND ----------------- JOY GND
+  GP26 (pin31) -------- JOY VRx
+  GP27 (pin32) -------- JOY VRy
+  GP22 (pin29) -------- JOY SW   (押すと GND。内部プルアップを使う)</pre></figure><h3>問いの答えと解説</h3>
+<ol>
+<li><strong>茶 = GND、赤 = 電源(+)、橙 = 信号（PWM）</strong>です。</li>
+<li><strong>VBUS（5V）</strong>。SG90 は 4.8V 以上が定格で、3.3V ではトルク不足・不安定になります。また動き出しの大電流で 3.3V レギュレータの電圧が下がり、<strong>Pico 自体がリセットする</strong>原因になります。VBUS は USB の 5V がそのまま出ているピンです（USB 給電時のみ）。</li>
+<li><strong>3V3</strong>。5V で給電すると VRx/VRy が最大 5V になり、ADC 入力の上限 3.3V を超えます（ADC ピンは 5V に耐えられません）。可変抵抗なので 3.3V でも問題なく動きます。</li>
+<li><strong>サーボの電源（VBUS と GND の間）</strong>に、<strong>+ を VBUS、−（白帯）を GND</strong> 向きで入れます。モータの動き出しの電流を手元から供給して、電源電圧の落ち込みを和らげます。逆に挿すと破損・破裂の危険があります。</li>
+<li>多くの SG90 は 3.3V の信号で動きます（入力の High 判定が 2V 前後のため）。動作が不安定な個体なら、トランジスタ（課題07）で 5V に変換します。</li>
+</ol>
+<div class="note">サーボ 1 個なら PC の USB ポートからの給電で動きますが、2 個以上や大きなサーボは<strong>別電源</strong>を用意し、<strong>GND だけ Pico と共通</strong>にします。GND が共通でないと信号の基準がずれて動きません。</div>
+<div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li>サーボが動くたびに Pico が再起動する → 電源不足です。コンデンサを追加するか別電源に。</li><li>サーボを手で無理に回すとギアが欠けます。</li><li>角度の端（0° / 180°）でサーボが「ジー」と鳴り続けるなら、パルス幅が可動範囲の外です。<code>PULSE_MIN_US</code> / <code>PULSE_MAX_US</code> を狭めましょう。</li></ul></div></div></div>
+</section>
+
+<section id="code"><h2><span class="step">STEP 2</span>コーディング課題</h2>
+<div class="card"><p>スティックの傾きで<strong>速度</strong>を決める（位置ではなく速度で制御する）方式で作ります。</p><h3>要件</h3><ul class="req"><li>GP16 に 50Hz の PWM を出し、<strong>1 カウント = 1µs</strong> になるように設定する</li><li>角度（0〜180°）→ パルス幅（500〜2400µs）に変換する関数を作る</li><li>起動時にスティックの中央値を自動で測る（キャリブレーション）</li><li>中央 ±200 カウントは反応しない（デッドゾーン）</li><li>傾きに比例した速度で角度を増減させ、0〜180° の範囲に制限する</li><li>スティック押し込みで 90° に戻す</li></ul></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden>1µs 単位にするには、分周比 = システムクロック ÷ 1MHz。<code>clock_get_hz(clk_sys) / 1000000.0f</code> で計算すると、クロックが変わっても正しく動きます（<code>hardware/clocks.h</code>）。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>TOP = 20000 − 1 にすれば 20ms 周期。<code>pwm_set_gpio_level(pin, パルス幅[µs])</code> とそのまま書けます。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden>角度は <code>float</code> で保持し、20ms ごとに「速度」を足していきます。整数だと遅い速度が 0 に丸められてしまいます。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 4</span><span class="chev">▾</span></button><div class="rbody" hidden>中央値は 32 回ほど読んで平均します。そのときスティックには触らないこと。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">コードの解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><figure class="code"><figcaption><span class="fname">main.c</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-c">// 課題06: ジョイスティックでサーボの角度を操作する（傾き量に比例した速度で動く）
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include "pico/stdlib.h"
+#include "hardware/adc.h"
+#include "hardware/clocks.h"
+#include "hardware/pwm.h"
+
+#define SERVO_PIN   16          // GP16 (物理ピン21)  PWM0 A
+#define JOY_X_PIN   26          // GP26 = ADC0 (物理ピン31)
+#define JOY_X_CH    0
+#define JOY_SW_PIN  22          // GP22 (物理ピン29)  押すと GND
+
+#define PULSE_MIN_US 500        // 0°   … SG90 の個体差に合わせて調整
+#define PULSE_MAX_US 2400       // 180°
+#define DEADZONE     200        // 中心付近の遊び（ADC カウント）
+#define MAX_SPEED    3.0f       // 最大速度 [°/周期]
+#define LOOP_MS      20
+
+static void servo_init(uint pin) {
+    gpio_set_function(pin, GPIO_FUNC_PWM);
+    uint slice = pwm_gpio_to_slice_num(pin);
+    pwm_config cfg = pwm_get_default_config();
+    // 1 カウント = 1us になるよう分周（clk_sys が何 MHz でも動くように計算）
+    float div = (float)clock_get_hz(clk_sys) / 1000000.0f;
+    pwm_config_set_clkdiv(&amp;cfg, div);
+    pwm_config_set_wrap(&amp;cfg, 20000 - 1);   // 20000us = 20ms = 50Hz
+    pwm_init(slice, &amp;cfg, true);
+}
+
+static void servo_write_deg(uint pin, float deg) {
+    if (deg &lt; 0.0f)   deg = 0.0f;
+    if (deg &gt; 180.0f) deg = 180.0f;
+    uint16_t us = (uint16_t)(PULSE_MIN_US + (PULSE_MAX_US - PULSE_MIN_US) * deg / 180.0f);
+    pwm_set_gpio_level(pin, us);           // 1 カウント = 1us なのでそのまま入る
+}
+
+static uint16_t read_center(void) {
+    uint32_t sum = 0;
+    for (int i = 0; i &lt; 32; i++) {
+        sum += adc_read();
+        sleep_ms(2);
+    }
+    return (uint16_t)(sum / 32);
+}
+
+int main(void) {
+    stdio_init_all();
+
+    adc_init();
+    adc_gpio_init(JOY_X_PIN);
+    adc_select_input(JOY_X_CH);
+
+    gpio_init(JOY_SW_PIN);
+    gpio_set_dir(JOY_SW_PIN, GPIO_IN);
+    gpio_pull_up(JOY_SW_PIN);
+
+    servo_init(SERVO_PIN);
+    float angle = 90.0f;
+    servo_write_deg(SERVO_PIN, angle);
+
+    sleep_ms(300);
+    uint16_t center = read_center();       // 起動時はスティックに触らない
+    printf("center=%u\n", center);
+
+    while (true) {
+        int dx = (int)adc_read() - (int)center;
+
+        if (abs(dx) &gt; DEADZONE) {
+            // デッドゾーンの外側だけを 0..1 に正規化して速度にする
+            int span = (dx &gt; 0) ? (4095 - center - DEADZONE) : (center - DEADZONE);
+            float ratio = (float)(abs(dx) - DEADZONE) / (float)span;
+            float speed = MAX_SPEED * ratio;
+            angle += (dx &gt; 0) ? speed : -speed;
+            if (angle &lt; 0.0f)   angle = 0.0f;
+            if (angle &gt; 180.0f) angle = 180.0f;
+        }
+
+        if (!gpio_get(JOY_SW_PIN)) {       // スティック押し込みで中央に戻す
+            angle = 90.0f;
+        }
+
+        servo_write_deg(SERVO_PIN, angle);
+        sleep_ms(LOOP_MS);
+    }
+}</code></pre></figure><figure class="code"><figcaption><span class="fname">CMakeLists.txt</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-cmake">add_executable(ex06 main.c)
+target_link_libraries(ex06 pico_stdlib hardware_adc hardware_pwm)
+pico_enable_stdio_usb(ex06 1)     # printf を USB シリアルへ
+pico_enable_stdio_uart(ex06 0)
+pico_add_extra_outputs(ex06)      # .uf2 を生成</code></pre></figure><h3>解説</h3>
+<ul>
+<li>デッドゾーンの外側だけを 0〜1 に正規化しているので、デッドゾーンを抜けた直後から<strong>なめらかに</strong>速度が上がります（単純に dx を使うと、抜けた瞬間に急に動き出します）。</li>
+<li>中央値は左右で非対称なことが多いので、<code>span</code> を左右別々に計算しています。</li>
+<li>「位置」ではなく「速度」で操作する方式は、ラジコンやクレーンのような実機の操作感に近くなります。</li>
+</ul><div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li><code>pwm_config_set_clkdiv</code> の最大値は 255.94。150 は範囲内ですが、もっと遅いクロックを作りたいときは TOP 側で調整します。</li><li><code>abs()</code> を使うときは <code>&lt;stdlib.h&gt;</code> を include。</li></ul></div></div></div>
+</section>
+
+<section><h2>✅ 動作確認</h2><div class="card"><ul class="checks"><li><input type="checkbox" id="c0"><label for="c0">スティックを倒すとサーボが回り、倒す量で速さが変わる</label></li><li><input type="checkbox" id="c1"><label for="c1">スティックを離すとその場で止まる（勝手に動かない）</label></li><li><input type="checkbox" id="c2"><label for="c2">押し込むと 90° に戻る</label></li><li><input type="checkbox" id="c3"><label for="c3">サーボが動いても Pico がリセットしない</label></li></ul>
+<div class="done-box" style="margin-top:14px"><button class="donebtn" type="button" aria-pressed="false">この課題をクリアにする</button></div></div></section>
+
+<section><h2>🚀 発展課題</h2><div class="card challenge"><ul><li>Y 軸でもう 1 台のサーボを動かし、<strong>パン・チルト台</strong>を作る（電源容量に注意）。</li><li>急停止・急発進しないよう<strong>加減速</strong>（速度に上限付きの変化率）を入れる。</li><li>スティック位置をそのまま角度にする「位置制御モード」と切り替えられるようにする。</li></ul></div></section>
+<div class="tools"><button type="button" data-toggle-all=".hint">ヒントをすべて開く</button>
+<button type="button" data-toggle-all=".answer">解答をすべて開く</button></div>
+<nav class="pager"><a href="ex05_74hc595_bargraph.html"><small>← 前の課題</small>05 シフトレジスタでLEDバーグラフ</a><a class="next" href="ex07_reaction_game.html"><small>次の課題 →</small>07 反応速度ゲームを作ろう</a></nav>
+</main>
+<script>
+(function(){
+  function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+  // 表示/非表示ボタン
+  document.querySelectorAll('.rbtn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var body=b.nextElementSibling, open=b.getAttribute('aria-expanded')==='true';
+      b.setAttribute('aria-expanded',String(!open)); body.hidden=open;
+      b.parentElement.classList.toggle('open',!open);
+      var l=b.querySelector('.rlabel');
+      if(b.parentElement.classList.contains('answer')) l.textContent=open?l.dataset.c:l.dataset.o;
+    });
+    var l=b.querySelector('.rlabel');
+    if(b.parentElement.classList.contains('answer')){l.dataset.c=l.textContent;l.dataset.o=l.textContent.replace('を見る','を隠す');}
+  });
+  // まとめて開閉
+  document.querySelectorAll('[data-toggle-all]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var sel=btn.dataset.toggleAll, open=btn.dataset.state!=='open';
+      document.querySelectorAll(sel+' > .rbtn').forEach(function(b){
+        if((b.getAttribute('aria-expanded')==='true')!==open) b.click();
+      });
+      btn.dataset.state=open?'open':'closed';
+      btn.textContent=btn.textContent.replace(open?'開く':'閉じる',open?'閉じる':'開く');
+    });
+  });
+  // コピー
+  document.querySelectorAll('figure.code').forEach(function(f){
+    var btn=f.querySelector('.copy'), code=f.querySelector('code');
+    btn.addEventListener('click',function(){
+      var t=code.innerText;
+      var ok=function(){btn.textContent='コピーしました';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='コピー';btn.classList.remove('done');},1600);};
+      if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,fallback);}else{fallback();}
+      function fallback(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(ta);}
+    });
+  });
+  // チェックリストと完了状態の保存
+  var key=document.body.dataset.key;
+  document.querySelectorAll('.checks input').forEach(function(c,i){
+    var k=key+'-chk-'+i; if(store(k)==='1') c.checked=true;
+    c.addEventListener('change',function(){store(k,c.checked?'1':'0');});
+  });
+  var done=document.querySelector('.donebtn');
+  if(done){
+    var set=function(v){done.setAttribute('aria-pressed',String(v));done.textContent=v?'✓ クリア済み':'この課題をクリアにする';};
+    set(store(key+'-done')==='1');
+    done.addEventListener('click',function(){var v=done.getAttribute('aria-pressed')!=='true';set(v);store(key+'-done',v?'1':'0');});
+  }
+  // テーマ切り替え
+  var tb=document.querySelector('.themebtn'), root=document.documentElement;
+  var saved=store('pico2w-theme'); if(saved) root.dataset.theme=saved;
+  if(tb) tb.addEventListener('click',function(){
+    var dark=root.dataset.theme? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; store('pico2w-theme',root.dataset.theme);
+  });
+  // シンタックスハイライト（オフラインならスキップ）
+  window.addEventListener('load',function(){ if(window.hljs){document.querySelectorAll('pre code').forEach(function(el){hljs.highlightElement(el);});} });
+})();
+</script>
+</body>
+</html>

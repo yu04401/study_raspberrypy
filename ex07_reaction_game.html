@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 反応速度ゲームを作ろう | Pico 2 W 課題</title>
+<meta name="description" content="割り込み・タイマ・ステートマシンという、組み込みソフトの骨格になる 3 つの技術を使います。トランジスタで大きめの負荷を動かす回路も設計します。">
+<style>
+:root{
+  --bg:#f6f5f1; --surface:#ffffff; --surface2:#f0eee8; --text:#1d1f23; --muted:#5d636d; --line:#dedad0;
+  --accent:#d9731a; --accent-soft:#fbeee1; --code-bg:#f3f1ec;
+  --sig:#2c6fd6; --pwr:#d23c3c; --gnd:#3b3f46; --idle:#b9b5aa;
+  --pcb:#1f7a4a; --pcb-ink:#e9f7ef;
+  --hint:#b07a00; --hint-soft:#fff6dd; --ans:#c0392b; --ans-soft:#fdecea;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#f2b27a; --accent-soft:#45290f; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+  }
+}
+:root[data-theme="dark"]{
+    --bg:#15171b; --surface:#1d2025; --surface2:#24282e; --text:#e8e6e1; --muted:#a3a8b1; --line:#34383f;
+    --accent:#f2b27a; --accent-soft:#45290f; --code-bg:#1a1c20;
+    --sig:#7aa7f0; --pwr:#f07a7a; --gnd:#c9ccd2; --idle:#5b6069;
+    --pcb:#17573a; --pcb-ink:#d6f2e2;
+    --hint:#f0c04d; --hint-soft:#2e2712; --ans:#f08a7e; --ans-soft:#311a18;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--text);
+  font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+  line-height:1.75;font-size:16px}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 64px}
+a{color:var(--accent)}
+code{font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:.9em;background:var(--code-bg);
+  padding:.1em .35em;border-radius:4px}
+header.hero{background:var(--surface);border-bottom:1px solid var(--line);margin-bottom:28px}
+header.hero .wrap{padding-top:22px;padding-bottom:22px}
+.crumbs{font-size:.85rem;color:var(--muted);display:flex;gap:.6em;flex-wrap:wrap;align-items:center}
+.crumbs a{color:var(--muted)}
+.badge{display:inline-block;background:var(--accent);color:#fff;font-weight:700;font-size:.8rem;
+  padding:.15em .7em;border-radius:99px;letter-spacing:.03em}
+h1{font-size:1.75rem;line-height:1.35;margin:.4em 0 .3em}
+h1 .no{color:var(--accent);margin-right:.35em;font-variant-numeric:tabular-nums}
+.lead{color:var(--muted);margin:0 0 .8em}
+.meta{display:flex;flex-wrap:wrap;gap:8px;margin:0;padding:0;list-style:none}
+.meta li{background:var(--surface2);border-radius:6px;padding:.2em .7em;font-size:.85rem}
+section{margin:0 0 34px}
+h2{font-size:1.3rem;margin:0 0 .6em;display:flex;align-items:center;gap:.5em}
+h2 .step{background:var(--accent);color:#fff;font-size:.75rem;padding:.2em .6em;border-radius:5px;font-weight:700}
+h3{font-size:1.05rem;margin:1.4em 0 .4em}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:18px 20px}
+.goal{border-left:5px solid var(--accent)}
+.parts{display:flex;flex-wrap:wrap;gap:8px;list-style:none;padding:0;margin:0}
+.parts li{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:.25em .75em;font-size:.92rem}
+.parts li b{color:var(--accent);margin-left:.3em}
+.points{background:var(--accent-soft);border-radius:12px;padding:16px 20px}
+.points h2{margin-bottom:.3em}
+.points ul{margin:0;padding-left:1.2em}
+.points li{margin:.35em 0}
+ol.q{padding-left:1.4em;margin:.4em 0 1em}
+ol.q li{margin:.5em 0}
+ul.req{padding-left:1.2em}
+ul.req li{margin:.3em 0}
+.reveal{margin:10px 0;border-radius:10px;border:1px solid var(--line);background:var(--surface);overflow:hidden}
+.rbtn{all:unset;box-sizing:border-box;cursor:pointer;display:flex;align-items:center;gap:.6em;width:100%;
+  padding:12px 16px;font-weight:700;min-height:44px}
+.rbtn:focus-visible{outline:3px solid var(--accent);outline-offset:-3px}
+.rbtn .chev{margin-left:auto;transition:transform .2s;color:var(--muted)}
+.rbtn[aria-expanded="true"] .chev{transform:rotate(180deg)}
+.hint .rbtn{color:var(--hint)}
+.hint .rbtn:hover{background:var(--hint-soft)}
+.answer{border:2px dashed var(--ans)}
+.answer .rbtn{color:var(--ans)}
+.answer .rbtn:hover{background:var(--ans-soft)}
+.answer.open{border-style:solid}
+.rbody{padding:4px 18px 18px;border-top:1px solid var(--line)}
+.rbody > :first-child{margin-top:12px}
+.note{background:var(--surface2);border-radius:8px;padding:10px 14px;font-size:.93rem;margin:12px 0}
+.warn{background:var(--ans-soft);border-left:4px solid var(--ans);border-radius:6px;padding:10px 14px;margin:12px 0;font-size:.95rem}
+.pitfall{border-left:4px solid var(--hint);background:var(--hint-soft);border-radius:6px;padding:10px 14px;margin:12px 0}
+.pitfall h4{margin:0 0 .3em;font-size:.95rem;color:var(--hint)}
+.pitfall ul{margin:0;padding-left:1.2em}
+figure{margin:14px 0}
+figure.schem pre, figure.code pre{margin:0;overflow-x:auto;background:var(--code-bg);padding:14px 16px;
+  font-family:"Cascadia Code",Consolas,Menlo,"SF Mono",monospace;font-size:13.5px;line-height:1.5;border-radius:0 0 8px 8px}
+figure.schem figcaption, figure.code figcaption{display:flex;align-items:center;justify-content:space-between;
+  background:var(--surface2);padding:6px 12px;border-radius:8px 8px 0 0;font-size:.82rem;color:var(--muted)}
+figure.code pre code{background:none;padding:0;font-size:inherit}
+.fname{font-family:Consolas,Menlo,monospace;font-weight:700;color:var(--text)}
+.copy{font:inherit;font-size:.78rem;border:1px solid var(--line);background:var(--surface);color:var(--text);
+  border-radius:6px;padding:2px 10px;cursor:pointer;min-height:28px}
+.copy.done{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tablewrap{overflow-x:auto}
+table.wiring{border-collapse:collapse;width:100%;font-size:.92rem;margin:8px 0}
+table.wiring th, table.wiring td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+table.wiring th{white-space:nowrap;font-size:.8rem;color:var(--muted);font-weight:600}
+table.wiring td.num{font-variant-numeric:tabular-nums;font-weight:700;width:4.5em}
+.tag{font-size:.75rem;padding:.1em .5em;border-radius:4px;color:#fff;white-space:nowrap}
+.t-sig{background:var(--sig)} .t-pwr{background:var(--pwr)} .t-gnd{background:var(--gnd);color:var(--bg)}
+svg.pinout{width:100%;height:auto;display:block;margin:6px 0;font-family:Consolas,Menlo,monospace}
+svg.pinout .pcb{fill:var(--pcb)}
+svg.pinout .usb{fill:#9aa0a8}
+svg.pinout .usbtxt{font-size:10px;fill:#222;text-anchor:middle;dominant-baseline:middle}
+svg.pinout .boardtxt{fill:var(--pcb-ink);font-size:14px;dominant-baseline:middle;font-weight:700;text-anchor:middle;font-family:system-ui,sans-serif}
+svg.pinout .boardsub{fill:var(--pcb-ink);font-size:10px;text-anchor:middle;opacity:.8;font-family:system-ui,sans-serif}
+svg.pinout .hole{fill:#d8c27a;stroke:#8b7a3e;stroke-width:1}
+svg.pinout .pnum{font-size:9px;fill:var(--pcb-ink);opacity:.85}
+svg.pinout .pname{font-size:11.5px;fill:var(--idle)}
+svg.pinout .plab{font-size:12.5px;font-family:"Hiragino Sans","Yu Gothic UI","Meiryo",system-ui,sans-serif;font-weight:600}
+svg.pinout .lead{stroke-width:1.5;stroke-dasharray:3 2}
+svg.pinout .p-sig .pname, svg.pinout .p-sig .plab{fill:var(--sig);font-weight:700}
+svg.pinout .p-pwr .pname, svg.pinout .p-pwr .plab{fill:var(--pwr);font-weight:700}
+svg.pinout .p-gnd .pname, svg.pinout .p-gnd .plab{fill:var(--gnd);font-weight:700}
+svg.pinout .p-sig .lead{stroke:var(--sig)} svg.pinout .p-pwr .lead{stroke:var(--pwr)} svg.pinout .p-gnd .lead{stroke:var(--gnd)}
+svg.pinout .p-sig .hole{fill:var(--sig);stroke:#fff;stroke-width:2}
+svg.pinout .p-pwr .hole{fill:var(--pwr);stroke:#fff;stroke-width:2}
+svg.pinout .p-gnd .hole{fill:var(--gnd);stroke:#fff;stroke-width:2}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:.82rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:5px;vertical-align:-1px}
+.legend .l-sig::before{background:var(--sig)} .legend .l-pwr::before{background:var(--pwr)} .legend .l-gnd::before{background:var(--gnd)}
+.checks{list-style:none;padding:0;margin:0}
+.checks li{display:flex;gap:.6em;align-items:flex-start;padding:6px 0;border-bottom:1px dashed var(--line)}
+.checks input{width:20px;height:20px;margin-top:4px;accent-color:var(--accent);flex:none}
+.challenge li{margin:.45em 0}
+.done-box{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.donebtn{font:inherit;font-weight:700;border:2px solid var(--accent);color:var(--accent);background:var(--surface);
+  padding:8px 18px;border-radius:99px;cursor:pointer;min-height:44px}
+.donebtn[aria-pressed="true"]{background:var(--accent);color:#fff}
+nav.pager{display:flex;justify-content:space-between;gap:12px;margin-top:40px;flex-wrap:wrap}
+nav.pager a{flex:1 1 200px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 16px;
+  text-decoration:none;color:var(--text)}
+nav.pager a small{display:block;color:var(--muted)}
+nav.pager a.next{text-align:right}
+.themebtn{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--surface2);color:var(--text);
+  border-radius:99px;padding:2px 10px;cursor:pointer;margin-left:auto}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:6px 0 0}
+.tools button{font:inherit;font-size:.82rem;border:1px solid var(--line);background:var(--surface);color:var(--muted);
+  border-radius:6px;padding:4px 10px;cursor:pointer}
+/* highlight.js 用の控えめな配色 */
+.hljs-comment{color:#7c8a7a;font-style:italic}
+.hljs-keyword,.hljs-type,.hljs-built_in{color:#8a3fc0}
+.hljs-string{color:#1f8a55}
+.hljs-number,.hljs-literal{color:#c2541d}
+.hljs-meta{color:#2c6fd6}
+.hljs-title.function_{color:#1d5fb8}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .hljs-keyword,:root:not([data-theme="light"]) .hljs-type{color:#c99cf0}
+ :root:not([data-theme="light"]) .hljs-string{color:#7fd6a0} :root:not([data-theme="light"]) .hljs-number{color:#f2b27a}
+ :root:not([data-theme="light"]) .hljs-meta{color:#8db6f2} :root:not([data-theme="light"]) .hljs-title.function_{color:#9cc3ff}}
+:root[data-theme="dark"] .hljs-keyword,:root[data-theme="dark"] .hljs-type{color:#c99cf0}
+:root[data-theme="dark"] .hljs-string{color:#7fd6a0} :root[data-theme="dark"] .hljs-number{color:#f2b27a}
+:root[data-theme="dark"] .hljs-meta{color:#8db6f2} :root[data-theme="dark"] .hljs-title.function_{color:#9cc3ff}
+@media (max-width:560px){h1{font-size:1.4rem}.card{padding:14px}.rbody{padding:4px 12px 14px}}
+@media print{.rbody[hidden]{display:block!important}.rbtn .chev,.copy,.tools,.themebtn{display:none}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js" defer></script><script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cmake.min.js" defer></script>
+</head>
+<body data-key="pico2w-ex07">
+<header class="hero"><div class="wrap">
+<div class="crumbs"><a href="index.html">課題一覧</a><span>›</span><span class="badge">Lv.3 応用</span>
+<button class="themebtn" type="button">ライト/ダーク</button></div>
+<h1><span class="no">07</span>反応速度ゲームを作ろう</h1>
+<p class="lead">割り込み・タイマ・ステートマシンという、組み込みソフトの骨格になる 3 つの技術を使います。トランジスタで大きめの負荷を動かす回路も設計します。</p>
+<ul class="meta"><li>⏱ 目安 120分</li><li>🔧 回路 + 💻 コード</li><li>📚 GPIO割り込み・アラーム・状態遷移・トランジスタ</li></ul>
+</div></header>
+<main class="wrap">
+<section><h2>🎯 つくるもの</h2><div class="card goal"><p>赤 LED が点いてから<strong>ランダムな時間（2〜5 秒）後に緑 LED とブザー</strong>。そこからボタンを押すまでの時間を ms で表示する反応速度ゲームを作ります。緑が点く前に押したら「フライング」です。</p>
+<figure class="schem"><figcaption>状態遷移</figcaption><pre>
+  IDLE   --(ボタン)-->  WAIT
+  WAIT   --(2〜5秒)-->  GO       緑LED + ブザー
+  GO     --(ボタン)-->  RESULT   反応時間を表示
+  WAIT   --(ボタン)-->  RESULT   フライング!
+  RESULT --(1.5秒)-->   IDLE
+</pre></figure></div></section>
+<section><h2>🧰 使う部品</h2><ul class="parts"><li>タクトスイッチ<b>×1</b></li><li>赤色LED<b>×1</b></li><li>緑色LED<b>×1</b></li><li>抵抗 220Ω<b>×2</b></li><li>アクティブブザー<b>×1</b></li><li>NPN トランジスタ（S8050）<b>×1</b></li><li>抵抗 1kΩ<b>×1</b></li><li>整流ダイオード（任意）<b>×1</b></li></ul>
+<p class="note">共通で使うもの: Pico 2 W、ブレッドボード、ジャンパワイヤ、USB ケーブル。</p></section>
+<section class="points"><h2>📌 この課題のポイント</h2><ul><li>GPIO の電流は数 mA が目安。それ以上の負荷は<strong>トランジスタでスイッチ</strong>する。</li><li><strong>割り込み</strong>を使うと、メインループが何をしていてもボタンの瞬間を逃さない。押した時刻は割り込みの中で記録する。</li><li>割り込みとメインで共有する変数には <strong><code>volatile</code></strong>。割り込みハンドラは短く（printf・sleep 禁止）。</li><li><code>sleep</code> で待つ代わりに<strong>アラーム（タイマ）</strong>を使い、待っている間もボタンを監視する。</li><li>動作を<strong>状態（ステート）</strong>に分けて <code>switch</code> で書くと、複雑な動きでも見通しよく書ける。</li></ul></section>
+
+<section id="circuit"><h2><span class="step">STEP 1</span>回路課題</h2>
+<div class="card"><p>LED とボタンはこれまでと同じです。今回の主役はブザーを鳴らすトランジスタ回路です。</p><ol class="q"><li>アクティブブザーは約 30mA 流れます。GPIO に直接つないで鳴らしてはいけない理由は？</li><li>NPN トランジスタでブザーを ON/OFF する回路を考えよう。エミッタ(E)・ベース(B)・コレクタ(C)はそれぞれどこにつなぐ？</li><li>ベース抵抗はキットの 220Ω / 1kΩ / 10kΩ のどれが適切？ トランジスタの電流増幅率 h<sub>FE</sub> = 100、ブザー 30mA として計算しよう。</li><li>アクティブブザーとパッシブブザーの見分け方は？</li><li>（任意）ブザーに並列に整流ダイオードを入れることがあります。なぜ？ 向きは？</li></ol></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden>GPIO の駆動能力の設定は 2〜12mA。チップ全体で流せる電流にも上限があります。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>負荷（ブザー）の GND 側をトランジスタで切る「<strong>ローサイドスイッチ</strong>」が基本形です。E は GND 側。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden>必要なベース電流 I<sub>B</sub> = I<sub>C</sub> ÷ h<sub>FE</sub>。確実に ON（飽和）させるため、その 5〜10 倍流すのが定石。ベース抵抗の電圧は 3.3V − 0.7V（B-E 間の電圧）です。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 4</span><span class="chev">▾</span></button><div class="rbody" hidden>S8050 は平らな面（文字のある面）を手前にして、左から <strong>E・B・C</strong> の順です（念のため刻印・データシートで確認）。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 5</span><span class="chev">▾</span></button><div class="rbody" hidden>コイル（ブザーの中身）は電流を急に切ると高い電圧（逆起電力）を出します。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">回路の解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><h3>配線（ピン配置図）</h3><div class="legend"><span class="l-sig">信号</span><span class="l-pwr">電源</span><span class="l-gnd">GND</span></div><svg class="pinout" viewBox="0 0 800 540" role="img" aria-label="Pico 2 W ピン配置と今回の接続">
+<rect x="340" y="30" width="120" height="490" rx="8" class="pcb"/>
+<rect x="380.0" y="18" width="40" height="22" rx="3" class="usb"/>
+<text x="400.0" y="26" class="usbtxt">USB</text>
+<text x="400.0" y="278.5" class="boardtxt" transform="rotate(-90 400.0 278.5)">Pico 2 W（上から見た図）</text>
+<g class="p-idle">
+<circle cx="350" cy="60" r="6" class="hole"/>
+<text x="362" y="64" text-anchor="start" class="pnum">1</text>
+<text x="328" y="64" text-anchor="end" class="pname">GP0</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="60" r="6" class="hole"/>
+<text x="438" y="64" text-anchor="end" class="pnum">40</text>
+<text x="472" y="64" text-anchor="start" class="pname">VBUS</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="83" r="6" class="hole"/>
+<text x="362" y="87" text-anchor="start" class="pnum">2</text>
+<text x="328" y="87" text-anchor="end" class="pname">GP1</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="83" r="6" class="hole"/>
+<text x="438" y="87" text-anchor="end" class="pnum">39</text>
+<text x="472" y="87" text-anchor="start" class="pname">VSYS</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="106" r="6" class="hole"/>
+<text x="362" y="110" text-anchor="start" class="pnum">3</text>
+<text x="328" y="110" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="106" r="6" class="hole"/>
+<text x="438" y="110" text-anchor="end" class="pnum">38</text>
+<text x="472" y="110" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="129" r="6" class="hole"/>
+<text x="362" y="133" text-anchor="start" class="pnum">4</text>
+<text x="328" y="133" text-anchor="end" class="pname">GP2</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="129" r="6" class="hole"/>
+<text x="438" y="133" text-anchor="end" class="pnum">37</text>
+<text x="472" y="133" text-anchor="start" class="pname">3V3_EN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="152" r="6" class="hole"/>
+<text x="362" y="156" text-anchor="start" class="pnum">5</text>
+<text x="328" y="156" text-anchor="end" class="pname">GP3</text>
+</g>
+<g class="p-pwr">
+<circle cx="450" cy="152" r="6" class="hole"/>
+<text x="438" y="156" text-anchor="end" class="pnum">36</text>
+<text x="472" y="156" text-anchor="start" class="pname">3V3(OUT)</text>
+<line x1="540" y1="152" x2="546" y2="152" class="lead"/>
+<text x="552" y="156" text-anchor="start" class="plab">ブザー +</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="175" r="6" class="hole"/>
+<text x="362" y="179" text-anchor="start" class="pnum">6</text>
+<text x="328" y="179" text-anchor="end" class="pname">GP4</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="175" r="6" class="hole"/>
+<text x="438" y="179" text-anchor="end" class="pnum">35</text>
+<text x="472" y="179" text-anchor="start" class="pname">ADC_VREF</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="198" r="6" class="hole"/>
+<text x="362" y="202" text-anchor="start" class="pnum">7</text>
+<text x="328" y="202" text-anchor="end" class="pname">GP5</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="198" r="6" class="hole"/>
+<text x="438" y="202" text-anchor="end" class="pnum">34</text>
+<text x="472" y="202" text-anchor="start" class="pname">GP28</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="221" r="6" class="hole"/>
+<text x="362" y="225" text-anchor="start" class="pnum">8</text>
+<text x="328" y="225" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="221" r="6" class="hole"/>
+<text x="438" y="225" text-anchor="end" class="pnum">33</text>
+<text x="472" y="225" text-anchor="start" class="pname">AGND</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="244" r="6" class="hole"/>
+<text x="362" y="248" text-anchor="start" class="pnum">9</text>
+<text x="328" y="248" text-anchor="end" class="pname">GP6</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="244" r="6" class="hole"/>
+<text x="438" y="248" text-anchor="end" class="pnum">32</text>
+<text x="472" y="248" text-anchor="start" class="pname">GP27</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="267" r="6" class="hole"/>
+<text x="362" y="271" text-anchor="start" class="pnum">10</text>
+<text x="328" y="271" text-anchor="end" class="pname">GP7</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="267" r="6" class="hole"/>
+<text x="438" y="271" text-anchor="end" class="pnum">31</text>
+<text x="472" y="271" text-anchor="start" class="pname">GP26</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="290" r="6" class="hole"/>
+<text x="362" y="294" text-anchor="start" class="pnum">11</text>
+<text x="328" y="294" text-anchor="end" class="pname">GP8</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="290" r="6" class="hole"/>
+<text x="438" y="294" text-anchor="end" class="pnum">30</text>
+<text x="472" y="294" text-anchor="start" class="pname">RUN</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="313" r="6" class="hole"/>
+<text x="362" y="317" text-anchor="start" class="pnum">12</text>
+<text x="328" y="317" text-anchor="end" class="pname">GP9</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="313" r="6" class="hole"/>
+<text x="438" y="317" text-anchor="end" class="pnum">29</text>
+<text x="472" y="317" text-anchor="start" class="pname">GP22</text>
+</g>
+<g class="p-gndidle">
+<circle cx="350" cy="336" r="6" class="hole"/>
+<text x="362" y="340" text-anchor="start" class="pnum">13</text>
+<text x="328" y="340" text-anchor="end" class="pname">GND</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="336" r="6" class="hole"/>
+<text x="438" y="340" text-anchor="end" class="pnum">28</text>
+<text x="472" y="340" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-sig">
+<circle cx="350" cy="359" r="6" class="hole"/>
+<text x="362" y="363" text-anchor="start" class="pnum">14</text>
+<text x="328" y="363" text-anchor="end" class="pname">GP10</text>
+<line x1="260" y1="359" x2="254" y2="359" class="lead"/>
+<text x="248" y="363" text-anchor="end" class="plab">1kΩ → S8050 ベース</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="359" r="6" class="hole"/>
+<text x="438" y="363" text-anchor="end" class="pnum">27</text>
+<text x="472" y="363" text-anchor="start" class="pname">GP21</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="382" r="6" class="hole"/>
+<text x="362" y="386" text-anchor="start" class="pnum">15</text>
+<text x="328" y="386" text-anchor="end" class="pname">GP11</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="382" r="6" class="hole"/>
+<text x="438" y="386" text-anchor="end" class="pnum">26</text>
+<text x="472" y="386" text-anchor="start" class="pname">GP20</text>
+</g>
+<g class="p-idle">
+<circle cx="350" cy="405" r="6" class="hole"/>
+<text x="362" y="409" text-anchor="start" class="pnum">16</text>
+<text x="328" y="409" text-anchor="end" class="pname">GP12</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="405" r="6" class="hole"/>
+<text x="438" y="409" text-anchor="end" class="pnum">25</text>
+<text x="472" y="409" text-anchor="start" class="pname">GP19</text>
+</g>
+<g class="p-sig">
+<circle cx="350" cy="428" r="6" class="hole"/>
+<text x="362" y="432" text-anchor="start" class="pnum">17</text>
+<text x="328" y="432" text-anchor="end" class="pname">GP13</text>
+<line x1="260" y1="428" x2="254" y2="428" class="lead"/>
+<text x="248" y="432" text-anchor="end" class="plab">220Ω → 緑LED</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="428" r="6" class="hole"/>
+<text x="438" y="432" text-anchor="end" class="pnum">24</text>
+<text x="472" y="432" text-anchor="start" class="pname">GP18</text>
+</g>
+<g class="p-gnd">
+<circle cx="350" cy="451" r="6" class="hole"/>
+<text x="362" y="455" text-anchor="start" class="pnum">18</text>
+<text x="328" y="455" text-anchor="end" class="pname">GND</text>
+<line x1="260" y1="451" x2="254" y2="451" class="lead"/>
+<text x="248" y="455" text-anchor="end" class="plab">LED・SW・S8050 エミッタ</text>
+</g>
+<g class="p-gndidle">
+<circle cx="450" cy="451" r="6" class="hole"/>
+<text x="438" y="455" text-anchor="end" class="pnum">23</text>
+<text x="472" y="455" text-anchor="start" class="pname">GND</text>
+</g>
+<g class="p-sig">
+<circle cx="350" cy="474" r="6" class="hole"/>
+<text x="362" y="478" text-anchor="start" class="pnum">19</text>
+<text x="328" y="478" text-anchor="end" class="pname">GP14</text>
+<line x1="260" y1="474" x2="254" y2="474" class="lead"/>
+<text x="248" y="478" text-anchor="end" class="plab">タクトスイッチ → GND</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="474" r="6" class="hole"/>
+<text x="438" y="478" text-anchor="end" class="pnum">22</text>
+<text x="472" y="478" text-anchor="start" class="pname">GP17</text>
+</g>
+<g class="p-sig">
+<circle cx="350" cy="497" r="6" class="hole"/>
+<text x="362" y="501" text-anchor="start" class="pnum">20</text>
+<text x="328" y="501" text-anchor="end" class="pname">GP15</text>
+<line x1="260" y1="497" x2="254" y2="497" class="lead"/>
+<text x="248" y="501" text-anchor="end" class="plab">220Ω → 赤LED</text>
+</g>
+<g class="p-idle">
+<circle cx="450" cy="497" r="6" class="hole"/>
+<text x="438" y="501" text-anchor="end" class="pnum">21</text>
+<text x="472" y="501" text-anchor="start" class="pname">GP16</text>
+</g>
+</svg><div class="tablewrap"><table class="wiring"><thead><tr><th>物理ピン</th><th>名前</th><th>種別</th><th>つなぐ先</th></tr></thead><tbody><tr><td class="num">14</td><td><code>GP10</code></td><td><span class="tag t-sig">信号</span></td><td>1kΩ → S8050 ベース</td></tr><tr><td class="num">17</td><td><code>GP13</code></td><td><span class="tag t-sig">信号</span></td><td>220Ω → 緑LED</td></tr><tr><td class="num">18</td><td><code>GND</code></td><td><span class="tag t-gnd">GND</span></td><td>LED・SW・S8050 エミッタ</td></tr><tr><td class="num">19</td><td><code>GP14</code></td><td><span class="tag t-sig">信号</span></td><td>タクトスイッチ → GND</td></tr><tr><td class="num">20</td><td><code>GP15</code></td><td><span class="tag t-sig">信号</span></td><td>220Ω → 赤LED</td></tr><tr><td class="num">36</td><td><code>3V3(OUT)</code></td><td><span class="tag t-pwr">電源</span></td><td>ブザー +</td></tr></tbody></table></div><h3>回路図</h3><figure class="schem"><figcaption>回路図（R = Ω、例: 220R = 220Ω）</figcaption><pre>  3V3 (pin36) ---------+--------------+
+                       |              |
+                    (+)|              |
+                    [ BZ ]        [1N4001]   ブザーと並列 (任意)
+                    (-)|              |      白帯(カソード)を 3V3 側に
+                       |              |
+                       +--------------+
+                       |
+                       C
+  GP10 ---[ 1k ]------ B    S8050 (NPN)
+ (pin14)               E    平らな面を手前に: 左から E B C
+                       |
+  GND -----------------+
+
+  GP15 (pin20) ---[ 220R ]---|&gt;|--- GND    赤LED「待て」
+  GP13 (pin17) ---[ 220R ]---|&gt;|--- GND    緑LED「押せ!」
+  GP14 (pin19) -------o  o--------- GND    ボタン</pre></figure><h3>問いの答えと解説</h3>
+<ol>
+<li>30mA は GPIO の駆動能力（最大設定 12mA）を大きく超えます。電圧が下がって鳴らないだけでなく、ピンや IC を傷める原因になります。</li>
+<li><strong>E → GND、C → ブザーの −、ブザーの + → 3V3、B → 抵抗 → GP10</strong>。GP10 を High にするとベース電流が流れ、C-E 間が ON になってブザーに電流が流れます。</li>
+<li>必要な I<sub>B</sub> = 30mA ÷ 100 = 0.3mA。5〜10 倍で 1.5〜3mA が目標です。
+<ul><li><strong>1kΩ: (3.3−0.7)/1k = 2.6mA → 最適</strong></li>
+<li>220Ω: 11.8mA → GPIO に負担が大きすぎ</li>
+<li>10kΩ: 0.26mA → 足りず、ON しきらない（音が小さい・トランジスタが発熱）</li></ul></li>
+<li>アクティブブザーは<strong>底面が樹脂で封止</strong>されていてシールが貼られていることが多く、直流をかけるだけで「ピー」と鳴ります。パッシブは底面に基板が見え、直流では「カチッ」としか鳴りません（PWM で音程を作る必要がある）。</li>
+<li>電流を切った瞬間の逆起電力でトランジスタが傷むのを防ぎます。<strong>カソード（白帯）を + 側</strong>に、ブザーと並列に入れます（還流ダイオード）。</li>
+</ol>
+<div class="note">トランジスタで切り離しているので、ブザーの + を <strong>VBUS（5V）</strong>につないでも GPIO は安全です。そのほうが音は大きくなります。</div>
+<div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li>E と C を逆にすると、ほとんど電流が流れず鳴りません（まったく鳴らないか、ごく小さい音）。</li><li>S8050 と似た見た目の PNP（S8550）を取り違えないように。刻印を確認しましょう。</li></ul></div></div></div>
+</section>
+
+<section id="code"><h2><span class="step">STEP 2</span>コーディング課題</h2>
+<div class="card"><p>状態遷移の図を見ながら、ステートマシンとして実装します。</p><h3>要件</h3><ul class="req"><li>状態を <code>enum</code>（IDLE / WAIT / GO / RESULT）で定義し、メインループの <code>switch</code> で処理する</li><li>ボタンは<strong>GPIO 割り込み</strong>で受け取り、押した時刻を割り込みの中で記録する</li><li>WAIT の 2〜5 秒（ランダム）は <code>sleep</code> ではなく<strong>アラーム</strong>で待ち、待っている間に押されたらフライングにする</li><li>GO になったら緑 LED を点け、ブザーを 80ms 鳴らす</li><li>反応時間（ms）とベスト記録をシリアルに表示する</li></ul></div>
+<div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 1</span><span class="chev">▾</span></button><div class="rbody" hidden><code>gpio_set_irq_enabled_with_callback(pin, GPIO_IRQ_EDGE_FALL, true, &amp;callback)</code>。コールバックの引数は <code>(uint gpio, uint32_t events)</code>。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 2</span><span class="chev">▾</span></button><div class="rbody" hidden>時刻は <code>time_us_64()</code>（起動からの µs）。割り込みでもチャタリングは起きるので、前回から 30ms 以内の割り込みは捨てます。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 3</span><span class="chev">▾</span></button><div class="rbody" hidden><code>add_alarm_in_ms(ms, callback, NULL, true)</code> で 1 回だけのタイマ。戻り値の ID を <code>cancel_alarm(id)</code> に渡せば取り消せます。コールバックが 0 を返すと繰り返しません。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 4</span><span class="chev">▾</span></button><div class="rbody" hidden>乱数は <code>#include "pico/rand.h"</code> の <code>get_rand_32()</code>（CMake に <code>pico_rand</code>）。</div></div><div class="reveal hint"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">💡</span><span class="rlabel">ヒント 5</span><span class="chev">▾</span></button><div class="rbody" hidden>割り込みでは「フラグを立てるだけ」にして、表示などの重い処理はメインループで行います。</div></div>
+<div class="reveal answer"><button type="button" class="rbtn" aria-expanded="false"><span class="ico">🔑</span><span class="rlabel">コードの解答を見る</span><span class="chev">▾</span></button><div class="rbody" hidden><figure class="code"><figcaption><span class="fname">main.c</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-c">// 課題07: 反応速度ゲーム（GPIO 割り込み + アラーム + ステートマシン）
+#include &lt;stdio.h&gt;
+#include "pico/stdlib.h"
+#include "pico/rand.h"
+
+#define BTN_PIN      14     // GP14 (物理ピン19)  押すと GND
+#define LED_RED      15     // GP15 (物理ピン20)  「待て」
+#define LED_GREEN    13     // GP13 (物理ピン17)  「押せ！」
+#define BUZZER_PIN   10     // GP10 (物理ピン14)  NPN トランジスタのベースへ
+
+#define BTN_GUARD_US (30 * 1000)   // 割り込みでのチャタリング無視時間
+
+typedef enum { ST_IDLE, ST_WAIT, ST_GO, ST_RESULT } state_t;
+
+// ---- 割り込みとメインループで共有する変数（必ず volatile）----
+static volatile bool     g_pressed  = false;
+static volatile uint64_t g_press_us = 0;
+static volatile bool     g_go       = false;
+static volatile uint64_t g_go_us    = 0;
+
+static alarm_id_t g_go_alarm = 0;
+
+// ---- 割り込みハンドラ（短く！ printf や sleep は呼ばない）----
+static void gpio_cb(uint gpio, uint32_t events) {
+    if (gpio != BTN_PIN || !(events &amp; GPIO_IRQ_EDGE_FALL)) return;
+    uint64_t now = time_us_64();
+    static uint64_t last = 0;
+    if (now - last &lt; BTN_GUARD_US) return;   // バウンドは捨てる
+    last = now;
+    g_press_us = now;                        // 時刻は割り込みの中で取ると正確
+    g_pressed  = true;
+}
+
+static int64_t buzzer_off_cb(alarm_id_t id, void *user) {
+    (void)id; (void)user;
+    gpio_put(BUZZER_PIN, 0);
+    return 0;                                // 0 = 繰り返さない
+}
+
+static int64_t go_cb(alarm_id_t id, void *user) {
+    (void)id; (void)user;
+    gpio_put(LED_RED, 0);
+    gpio_put(LED_GREEN, 1);
+    gpio_put(BUZZER_PIN, 1);
+    g_go_us = time_us_64();
+    g_go    = true;
+    add_alarm_in_ms(80, buzzer_off_cb, NULL, true);
+    return 0;
+}
+
+static void out_init(uint pin) {
+    gpio_init(pin);
+    gpio_set_dir(pin, GPIO_OUT);
+    gpio_put(pin, 0);
+}
+
+static void beep(uint32_t ms) {
+    gpio_put(BUZZER_PIN, 1);
+    sleep_ms(ms);
+    gpio_put(BUZZER_PIN, 0);
+}
+
+static bool take_press(void) {               // 押下フラグを読んで下ろす
+    if (!g_pressed) return false;
+    g_pressed = false;
+    return true;
+}
+
+int main(void) {
+    stdio_init_all();
+    out_init(LED_RED);
+    out_init(LED_GREEN);
+    out_init(BUZZER_PIN);
+
+    gpio_init(BTN_PIN);
+    gpio_set_dir(BTN_PIN, GPIO_IN);
+    gpio_pull_up(BTN_PIN);
+    gpio_set_irq_enabled_with_callback(BTN_PIN, GPIO_IRQ_EDGE_FALL, true, &amp;gpio_cb);
+
+    state_t  st = ST_IDLE;
+    uint32_t best_ms = UINT32_MAX;
+    absolute_time_t result_until = nil_time;
+
+    printf("Press the button to start!\n");
+
+    while (true) {
+        switch (st) {
+        case ST_IDLE:
+            if (take_press()) {
+                uint32_t wait_ms = 2000 + get_rand_32() % 3000;   // 2〜5 秒
+                gpio_put(LED_RED, 1);
+                g_go = false;
+                g_go_alarm = add_alarm_in_ms(wait_ms, go_cb, NULL, true);
+                st = ST_WAIT;
+            }
+            break;
+
+        case ST_WAIT:
+            if (take_press()) {                       // 緑が付く前に押した
+                cancel_alarm(g_go_alarm);
+                gpio_put(LED_RED, 0);
+                gpio_put(LED_GREEN, 0);               // 同時に発火していた場合の保険
+                printf("FOUL! フライング\n");
+                beep(600);
+                result_until = make_timeout_time_ms(1000);
+                st = ST_RESULT;
+            } else if (g_go) {
+                st = ST_GO;
+            }
+            break;
+
+        case ST_GO:
+            if (take_press()) {
+                uint32_t ms = (uint32_t)((g_press_us - g_go_us) / 1000);
+                if (ms &lt; best_ms) best_ms = ms;
+                gpio_put(LED_GREEN, 0);
+                printf("reaction: %lu ms (best %lu ms)\n",
+                       (unsigned long)ms, (unsigned long)best_ms);
+                result_until = make_timeout_time_ms(1500);
+                st = ST_RESULT;
+            }
+            break;
+
+        case ST_RESULT:
+            if (time_reached(result_until)) {
+                g_pressed = false;                    // 待ち時間中の押下は捨てる
+                printf("Press to play again\n");
+                st = ST_IDLE;
+            }
+            break;
+        }
+        tight_loop_contents();
+    }
+}</code></pre></figure><figure class="code"><figcaption><span class="fname">CMakeLists.txt</span><button class="copy" type="button">コピー</button></figcaption><pre><code class="language-cmake">add_executable(ex07 main.c)
+target_link_libraries(ex07 pico_stdlib pico_rand)
+pico_enable_stdio_usb(ex07 1)     # printf を USB シリアルへ
+pico_enable_stdio_uart(ex07 0)
+pico_add_extra_outputs(ex07)      # .uf2 を生成</code></pre></figure><h3>解説</h3>
+<ul>
+<li><strong>時刻は割り込みの中で取る</strong>のがポイント。メインループで押下に気づいた時刻を使うと、ループの遅れぶんだけ記録が悪くなります。GO の時刻も同様にアラームのコールバックで記録しています。</li>
+<li><code>take_press()</code> で「読んだらフラグを下ろす」を 1 か所にまとめています。状態をまたいで押下が残ると、RESULT 中の押下が次のゲーム開始に化けてしまうためです。</li>
+<li>メインループは一度もブロックしない（フライング時の <code>beep</code> を除く）ので、どの状態でも即座に反応できます。</li>
+</ul><div class="pitfall"><h4>⚠ ハマりどころ</h4><ul><li>割り込みハンドラの中で <code>printf</code> や <code>sleep_ms</code> を呼ぶと、固まったり他の割り込みが遅れたりします。</li><li><code>volatile</code> を付け忘れると、最適化でメインループが変数の変化に気づかないことがあります（-O2 で再現しやすい）。</li><li><code>cancel_alarm</code> の直前にアラームが発火していた場合に備えて、フライング時は緑 LED も消しています。</li></ul></div></div></div>
+</section>
+
+<section><h2>✅ 動作確認</h2><div class="card"><ul class="checks"><li><input type="checkbox" id="c0"><label for="c0">ボタンで開始 → 赤点灯 → 2〜5 秒後に緑 + ブザー</label></li><li><input type="checkbox" id="c1"><label for="c1">押すと反応時間が表示され、ベスト記録が更新される</label></li><li><input type="checkbox" id="c2"><label for="c2">緑が点く前に押すと FOUL と表示され、長いブザーが鳴る</label></li><li><input type="checkbox" id="c3"><label for="c3">結果表示中にボタンを連打しても次のゲームが勝手に始まらない</label></li></ul>
+<div class="done-box" style="margin-top:14px"><button class="donebtn" type="button" aria-pressed="false">この課題をクリアにする</button></div></div></section>
+
+<section><h2>🚀 発展課題</h2><div class="card challenge"><ul><li>ボタンを 2 つにして<strong>2 人対戦</strong>にする（どちらが先に押したかを割り込みの時刻で判定）。</li><li>反応時間を 4 桁 7 セグメント LED に表示する（ダイナミック点灯に挑戦）。</li><li>5 回の平均タイムを出す。最高記録を電源を切っても残す（フラッシュ書き込み: 上級）。</li></ul></div></section>
+<div class="tools"><button type="button" data-toggle-all=".hint">ヒントをすべて開く</button>
+<button type="button" data-toggle-all=".answer">解答をすべて開く</button></div>
+<nav class="pager"><a href="ex06_servo_joystick.html"><small>← 前の課題</small>06 ジョイスティックでサーボを動かす</a><a class="next" href="ex08_ultrasonic_parking.html"><small>次の課題 →</small>08 超音波パーキングセンサー</a></nav>
+</main>
+<script>
+(function(){
+  function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v);}catch(e){return null;}}
+  // 表示/非表示ボタン
+  document.querySelectorAll('.rbtn').forEach(function(b){
+    b.addEventListener('click',function(){
+      var body=b.nextElementSibling, open=b.getAttribute('aria-expanded')==='true';
+      b.setAttribute('aria-expanded',String(!open)); body.hidden=open;
+      b.parentElement.classList.toggle('open',!open);
+      var l=b.querySelector('.rlabel');
+      if(b.parentElement.classList.contains('answer')) l.textContent=open?l.dataset.c:l.dataset.o;
+    });
+    var l=b.querySelector('.rlabel');
+    if(b.parentElement.classList.contains('answer')){l.dataset.c=l.textContent;l.dataset.o=l.textContent.replace('を見る','を隠す');}
+  });
+  // まとめて開閉
+  document.querySelectorAll('[data-toggle-all]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var sel=btn.dataset.toggleAll, open=btn.dataset.state!=='open';
+      document.querySelectorAll(sel+' > .rbtn').forEach(function(b){
+        if((b.getAttribute('aria-expanded')==='true')!==open) b.click();
+      });
+      btn.dataset.state=open?'open':'closed';
+      btn.textContent=btn.textContent.replace(open?'開く':'閉じる',open?'閉じる':'開く');
+    });
+  });
+  // コピー
+  document.querySelectorAll('figure.code').forEach(function(f){
+    var btn=f.querySelector('.copy'), code=f.querySelector('code');
+    btn.addEventListener('click',function(){
+      var t=code.innerText;
+      var ok=function(){btn.textContent='コピーしました';btn.classList.add('done');
+        setTimeout(function(){btn.textContent='コピー';btn.classList.remove('done');},1600);};
+      if(navigator.clipboard&&window.isSecureContext){navigator.clipboard.writeText(t).then(ok,fallback);}else{fallback();}
+      function fallback(){var ta=document.createElement('textarea');ta.value=t;document.body.appendChild(ta);ta.select();
+        try{document.execCommand('copy');ok();}catch(e){} document.body.removeChild(ta);}
+    });
+  });
+  // チェックリストと完了状態の保存
+  var key=document.body.dataset.key;
+  document.querySelectorAll('.checks input').forEach(function(c,i){
+    var k=key+'-chk-'+i; if(store(k)==='1') c.checked=true;
+    c.addEventListener('change',function(){store(k,c.checked?'1':'0');});
+  });
+  var done=document.querySelector('.donebtn');
+  if(done){
+    var set=function(v){done.setAttribute('aria-pressed',String(v));done.textContent=v?'✓ クリア済み':'この課題をクリアにする';};
+    set(store(key+'-done')==='1');
+    done.addEventListener('click',function(){var v=done.getAttribute('aria-pressed')!=='true';set(v);store(key+'-done',v?'1':'0');});
+  }
+  // テーマ切り替え
+  var tb=document.querySelector('.themebtn'), root=document.documentElement;
+  var saved=store('pico2w-theme'); if(saved) root.dataset.theme=saved;
+  if(tb) tb.addEventListener('click',function(){
+    var dark=root.dataset.theme? root.dataset.theme==='dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme=dark?'light':'dark'; store('pico2w-theme',root.dataset.theme);
+  });
+  // シンタックスハイライト（オフラインならスキップ）
+  window.addEventListener('load',function(){ if(window.hljs){document.querySelectorAll('pre code').forEach(function(el){hljs.highlightElement(el);});} });
+})();
+</script>
+</body>
+</html>
